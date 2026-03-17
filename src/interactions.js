@@ -36,7 +36,8 @@ async function handleButton(interaction) {
 
   if (!isMember) {
     return interaction.reply({
-      content: "❌ คุณยังไม่ได้อยู่ในรายชื่อ tracking ให้แจ้ง admin ใช้ `/pulse-admin add` เพิ่มคุณก่อน",
+      content:
+        "❌ คุณยังไม่ได้อยู่ในรายชื่อ tracking ให้แจ้ง admin ใช้ `/pulse-admin add` เพิ่มคุณก่อน",
       ephemeral: true,
     });
   }
@@ -100,7 +101,7 @@ async function handleCommand(interaction) {
         .setTitle("📊 My Pulse Stats")
         .addFields(
           { name: "🔥 Current Streak", value: `${streak} days`, inline: true },
-          { name: "👤 User", value: `<@${userId}>`, inline: true }
+          { name: "👤 User", value: `<@${userId}>`, inline: true },
         )
         .setTimestamp();
 
@@ -119,23 +120,33 @@ async function handleCommand(interaction) {
     if (sub === "add") {
       const user = options.getUser("user");
       if (user.bot) {
-        return interaction.reply({ content: "❌ ไม่สามารถเพิ่ม bot ได้", ephemeral: true });
+        return interaction.reply({
+          content: "❌ ไม่สามารถเพิ่ม bot ได้",
+          ephemeral: true,
+        });
       }
       db.addMember(user.id, user.displayName || user.username);
-      return interaction.reply({ content: `✅ เพิ่ม <@${user.id}> เข้ารายชื่อ tracking แล้ว` });
+      return interaction.reply({
+        content: `✅ เพิ่ม <@${user.id}> เข้ารายชื่อ tracking แล้ว`,
+        ephemeral: true,
+      });
     }
 
     if (sub === "remove") {
       const user = options.getUser("user");
       db.removeMember(user.id);
-      return interaction.reply({ content: `🗑️ ลบ <@${user.id}> ออกจากรายชื่อ tracking แล้ว` });
+      return interaction.reply({
+        content: `🗑️ ลบ <@${user.id}> ออกจากรายชื่อ tracking แล้ว`,
+        ephemeral: true,
+      });
     }
 
     if (sub === "list") {
       const members = db.getActiveMembers();
       if (members.length === 0) {
         return interaction.reply({
-          content: "📭 ยังไม่มีสมาชิกในรายชื่อ ใช้ `/pulse-admin add` เพื่อเพิ่ม",
+          content:
+            "📭 ยังไม่มีสมาชิกในรายชื่อ ใช้ `/pulse-admin add` เพื่อเพิ่ม",
           ephemeral: true,
         });
       }
@@ -155,12 +166,12 @@ async function handleCommand(interaction) {
 
     if (sub === "add-role") {
       const role = options.getRole("role");
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       const guild = interaction.guild;
       await guild.members.fetch();
       const membersWithRole = guild.members.cache.filter(
-        (m) => m.roles.cache.has(role.id) && !m.user.bot
+        (m) => m.roles.cache.has(role.id) && !m.user.bot,
       );
 
       let added = 0;
@@ -171,6 +182,7 @@ async function handleCommand(interaction) {
 
       return interaction.editReply({
         content: `✅ เพิ่ม ${added} สมาชิกจาก role **${role.name}** เข้ารายชื่อ tracking แล้ว`,
+        ephemeral: true,
       });
     }
 
