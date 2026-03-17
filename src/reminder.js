@@ -59,7 +59,7 @@ function buildBroadcastEmbed() {
         "",
         `📋 **Attendees**`,
         attendeeText,
-      ].join("\n")
+      ].join("\n"),
     )
     .setTimestamp()
     .setFooter({ text: "AXONS Pulse Bot • กด Done เมื่อทำ Pulse แล้ว" });
@@ -76,7 +76,7 @@ function buildBroadcastEmbed() {
     new ButtonBuilder()
       .setCustomId("pulse_export")
       .setLabel("📊 Export CSV")
-      .setStyle(ButtonStyle.Primary)
+      .setStyle(ButtonStyle.Primary),
   );
 
   return { embed, buttons };
@@ -129,11 +129,13 @@ function buildSummaryEmbed() {
   const missed = finalCheckins.filter((c) => c.status === "missed");
 
   const total = members.length;
-  const completionRate = total > 0 ? Math.round((done.length / total) * 100) : 0;
+  const completionRate =
+    total > 0 ? Math.round((done.length / total) * 100) : 0;
 
   const barLength = 20;
   const filledBars = Math.round((completionRate / 100) * barLength);
-  const progressBar = "🟩".repeat(filledBars) + "⬜".repeat(barLength - filledBars);
+  const progressBar =
+    "🟩".repeat(filledBars) + "⬜".repeat(barLength - filledBars);
 
   const streaks = members
     .map((m) => ({ ...m, streak: db.getStreak(m.discordId) }))
@@ -145,12 +147,15 @@ function buildSummaryEmbed() {
     .setColor(missed.length === 0 ? 0x23a559 : 0xf0b232)
     .setTitle("📊 Daily Summary — " + dayjs().format("DD MMM YYYY"))
     .setDescription(
-      [progressBar, `**${done.length}/${total}** completed (${completionRate}%)`].join("\n")
+      [
+        progressBar,
+        `**${done.length}/${total}** completed (${completionRate}%)`,
+      ].join("\n"),
     )
     .addFields(
       { name: "✅ Done", value: `${done.length}`, inline: true },
       { name: "⏭️ Skipped", value: `${skipped.length}`, inline: true },
-      { name: "❌ Missed", value: `${missed.length}`, inline: true }
+      { name: "❌ Missed", value: `${missed.length}`, inline: true },
     );
 
   if (missed.length > 0) {
@@ -160,17 +165,17 @@ function buildSummaryEmbed() {
     });
   }
 
-  if (streaks.length > 0) {
-    embed.addFields({
-      name: "🏆 Top Streaks",
-      value: streaks
-        .map(
-          (m, i) =>
-            `${["🥇", "🥈", "🥉"][i]} <@${m.discordId}> — ${m.streak} days ${getStreakEmoji(m.streak)}`
-        )
-        .join("\n"),
-    });
-  }
+  // if (streaks.length > 0) {
+  //   embed.addFields({
+  //     name: "🏆 Top Streaks",
+  //     value: streaks
+  //       .map(
+  //         (m, i) =>
+  //           `${["🥇", "🥈", "🥉"][i]} <@${m.discordId}> — ${m.streak} days ${getStreakEmoji(m.streak)}`
+  //       )
+  //       .join("\n"),
+  //   });
+  // }
 
   embed.setTimestamp().setFooter({ text: "AXONS Pulse Bot • Daily Summary" });
   return embed;
@@ -218,7 +223,7 @@ function buildStatusEmbed() {
     .addFields(
       { name: "✅ Done", value: `${done.length}`, inline: true },
       { name: "⏭️ Skip", value: `${skipped.length}`, inline: true },
-      { name: "⏳ Pending", value: `${pending.length}`, inline: true }
+      { name: "⏳ Pending", value: `${pending.length}`, inline: true },
     );
 
   if (done.length > 0) {
@@ -255,10 +260,10 @@ function buildLeaderboardEmbed() {
         ? streaks
             .map(
               (m, i) =>
-                `**${i + 1}.** <@${m.discordId}> — ${m.streak} days ${getStreakEmoji(m.streak)}`
+                `**${i + 1}.** <@${m.discordId}> — ${m.streak} days ${getStreakEmoji(m.streak)}`,
             )
             .join("\n")
-        : "No streaks yet! Start checking in to build yours."
+        : "No streaks yet! Start checking in to build yours.",
     )
     .setTimestamp()
     .setFooter({ text: "AXONS Pulse Bot • Leaderboard" });

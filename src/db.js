@@ -22,7 +22,7 @@ async function initDB() {
       discord_id TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,
       active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now'))
+      created_at TEXT DEFAULT (datetime('now','localtime'))
     )
   `);
 
@@ -60,7 +60,7 @@ function save() {
 function addMember(discordId, displayName) {
   db.run(
     `INSERT OR REPLACE INTO members (discord_id, display_name, active) VALUES (?, ?, 1)`,
-    [discordId, displayName]
+    [discordId, displayName],
   );
   save();
 }
@@ -71,9 +71,13 @@ function removeMember(discordId) {
 }
 
 function getActiveMembers() {
-  return db.exec(
-    `SELECT discord_id, display_name FROM members WHERE active = 1 ORDER BY display_name`
-  )[0]?.values.map(([id, name]) => ({ discordId: id, displayName: name })) || [];
+  return (
+    db
+      .exec(
+        `SELECT discord_id, display_name FROM members WHERE active = 1 ORDER BY display_name`,
+      )[0]
+      ?.values.map(([id, name]) => ({ discordId: id, displayName: name })) || []
+  );
 }
 
 function getMemberCount() {
@@ -86,8 +90,8 @@ function getMemberCount() {
 function recordCheckin(discordId, date, status) {
   db.run(
     `INSERT OR REPLACE INTO checkins (discord_id, date, status, confirmed_at)
-     VALUES (?, ?, ?, datetime('now'))`,
-    [discordId, date, status]
+     VALUES (?, ?, ?, datetime('now','localtime'))`,
+    [discordId, date, status],
   );
   save();
 }
@@ -99,7 +103,7 @@ function getCheckins(date) {
      JOIN members m ON c.discord_id = m.discord_id
      WHERE c.date = ? AND m.active = 1
      ORDER BY c.confirmed_at ASC`,
-    [date]
+    [date],
   );
   return (
     result[0]?.values.map(([id, name, status, time]) => ({
@@ -119,10 +123,13 @@ function getPendingMembers(date) {
        AND m.discord_id NOT IN (
          SELECT discord_id FROM checkins WHERE date = ?
        )`,
-    [date]
+    [date],
   );
   return (
-    result[0]?.values.map(([id, name]) => ({ discordId: id, displayName: name })) || []
+    result[0]?.values.map(([id, name]) => ({
+      discordId: id,
+      displayName: name,
+    })) || []
   );
 }
 
@@ -131,7 +138,7 @@ function getStreak(discordId) {
     `SELECT date FROM checkins
      WHERE discord_id = ? AND status = 'done'
      ORDER BY date DESC`,
-    [discordId]
+    [discordId],
   );
   if (!result[0]) return 0;
 
@@ -145,7 +152,10 @@ function getStreak(discordId) {
     while (expected.getDay() === 0 || expected.getDay() === 6) {
       expected.setDate(expected.getDate() - 1);
     }
-    const expectedStr = expected.toISOString().split("T")[0];
+    const y = expected.getFullYear();
+    const m = String(expected.getMonth() + 1).padStart(2, "0");
+    const d = String(expected.getDate()).padStart(2, "0");
+    const expectedStr = `${y}-${m}-${d}`;
     if (dates[i] === expectedStr) {
       streak++;
     } else {
@@ -162,7 +172,7 @@ function getWeeklyStats(startDate, endDate) {
      FROM checkins
      WHERE date >= ? AND date <= ?
      GROUP BY discord_id, status`,
-    [startDate, endDate]
+    [startDate, endDate],
   );
 
   const statsMap = {};
@@ -186,7 +196,7 @@ function getWeeklyStats(startDate, endDate) {
 function setBroadcastMessage(date, messageId, channelId) {
   db.run(
     `INSERT OR REPLACE INTO broadcast_messages (date, message_id, channel_id) VALUES (?, ?, ?)`,
-    [date, messageId, channelId]
+    [date, messageId, channelId],
   );
   save();
 }
@@ -194,10 +204,19 @@ function setBroadcastMessage(date, messageId, channelId) {
 function getBroadcastMessage(date) {
   const result = db.exec(
     `SELECT message_id, channel_id FROM broadcast_messages WHERE date = ?`,
-    [date]
+    [date],
   );
   if (!result[0]) return null;
-  return { messageId: result[0].values[0][0], channelId: result[0].values[0][1] };
+  return {
+    messageId: result[0].values[0][0],
+    channelId: result[0].values[0][1],
+  };
+}
+
+function resetToday(date) {
+  db.run(`DELETE FROM checkins WHERE date = ?`, [date]);
+  db.run(`DELETE FROM broadcast_messages WHERE date = ?`, [date]);
+  save();
 }
 
 module.exports = {
@@ -213,4 +232,5 @@ module.exports = {
   getWeeklyStats,
   setBroadcastMessage,
   getBroadcastMessage,
+  resetToday,
 };
