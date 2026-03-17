@@ -1,8 +1,9 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
 const db = require("./db");
 const {
   getToday,
-  buildConfirmEmbed,
+  refreshBroadcastEmbed,
+  buildExportCSV,
   buildStatusEmbed,
   buildLeaderboardEmbed,
   sendBroadcast,
@@ -14,6 +15,20 @@ const {
 async function handleButton(interaction) {
   const today = getToday();
   const userId = interaction.user.id;
+
+  // Export CSV
+  if (interaction.customId === "pulse_export") {
+    const csv = buildExportCSV(today);
+    const buffer = Buffer.from(csv, "utf-8");
+    const attachment = new AttachmentBuilder(buffer, {
+      name: `pulse-checkin-${today}.csv`,
+    });
+    return interaction.reply({
+      content: `📊 Export สำหรับวันที่ ${today}`,
+      files: [attachment],
+      ephemeral: true,
+    });
+  }
 
   // Check if user is a tracked member
   const members = db.getActiveMembers();
@@ -37,11 +52,21 @@ async function handleButton(interaction) {
     });
   }
 
+  // Record check-in
   const status = interaction.customId === "pulse_done" ? "done" : "skip";
   db.recordCheckin(userId, today, status);
 
-  const embed = buildConfirmEmbed(userId, status);
-  await interaction.reply({ embeds: [embed] });
+  // Reply ephemeral (only user sees)
+  const streak = db.getStreak(userId);
+  const msg =
+    status === "done"
+      ? `✅ Confirmed! Streak: **${streak} days**`
+      : `⏭️ Skipped today (ลา/WFH)`;
+
+  await interaction.reply({ content: msg, ephemeral: true });
+
+  // Refresh the broadcast embed with updated attendee list
+  await refreshBroadcastEmbed(interaction.client);
 }
 
 // ── Slash command handler ──
@@ -49,7 +74,6 @@ async function handleButton(interaction) {
 async function handleCommand(interaction) {
   const { commandName, options } = interaction;
 
-  // ── /pulse commands ──
   if (commandName === "pulse") {
     const sub = options.getSubcommand();
 
@@ -89,30 +113,22 @@ async function handleCommand(interaction) {
     }
   }
 
-  // ── /pulse-admin commands ──
   if (commandName === "pulse-admin") {
     const sub = options.getSubcommand();
 
     if (sub === "add") {
       const user = options.getUser("user");
       if (user.bot) {
-        return interaction.reply({
-          content: "❌ ไม่สามารถเพิ่ม bot ได้",
-          ephemeral: true,
-        });
+        return interaction.reply({ content: "❌ ไม่สามารถเพิ่ม bot ได้", ephemeral: true });
       }
       db.addMember(user.id, user.displayName || user.username);
-      return interaction.reply({
-        content: `✅ เพิ่ม <@${user.id}> เข้ารายชื่อ tracking แล้ว`,
-      });
+      return interaction.reply({ content: `✅ เพิ่ม <@${user.id}> เข้ารายชื่อ tracking แล้ว` });
     }
 
     if (sub === "remove") {
       const user = options.getUser("user");
       db.removeMember(user.id);
-      return interaction.reply({
-        content: `🗑️ ลบ <@${user.id}> ออกจากรายชื่อ tracking แล้ว`,
-      });
+      return interaction.reply({ content: `🗑️ ลบ <@${user.id}> ออกจากรายชื่อ tracking แล้ว` });
     }
 
     if (sub === "list") {
@@ -160,20 +176,14 @@ async function handleCommand(interaction) {
 
     if (sub === "broadcast") {
       await interaction.deferReply({ ephemeral: true });
-      const channel = interaction.channel;
-      await sendBroadcast(channel);
-      return interaction.editReply({
-        content: "✅ Broadcast sent!",
-      });
+      await sendBroadcast(interaction.channel);
+      return interaction.editReply({ content: "✅ Broadcast sent!" });
     }
 
     if (sub === "summary") {
       await interaction.deferReply({ ephemeral: true });
-      const channel = interaction.channel;
-      await sendSummary(channel);
-      return interaction.editReply({
-        content: "✅ Summary sent!",
-      });
+      await sendSummary(interaction.channel);
+      return interaction.editReply({ content: "✅ Summary sent!" });
     }
   }
 }

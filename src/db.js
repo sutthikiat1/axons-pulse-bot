@@ -37,6 +37,14 @@ async function initDB() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS broadcast_messages (
+      date TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL
+    )
+  `);
+
   save();
   console.log("[DB] Initialized successfully");
 }
@@ -89,7 +97,8 @@ function getCheckins(date) {
     `SELECT c.discord_id, m.display_name, c.status, c.confirmed_at
      FROM checkins c
      JOIN members m ON c.discord_id = m.discord_id
-     WHERE c.date = ? AND m.active = 1`,
+     WHERE c.date = ? AND m.active = 1
+     ORDER BY c.confirmed_at ASC`,
     [date]
   );
   return (
@@ -133,7 +142,6 @@ function getStreak(discordId) {
   for (let i = 0; i < dates.length; i++) {
     const expected = new Date(today);
     expected.setDate(expected.getDate() - i);
-    // Skip weekends
     while (expected.getDay() === 0 || expected.getDay() === 6) {
       expected.setDate(expected.getDate() - 1);
     }
@@ -173,6 +181,25 @@ function getWeeklyStats(startDate, endDate) {
   }));
 }
 
+// ── Broadcast message tracking ──
+
+function setBroadcastMessage(date, messageId, channelId) {
+  db.run(
+    `INSERT OR REPLACE INTO broadcast_messages (date, message_id, channel_id) VALUES (?, ?, ?)`,
+    [date, messageId, channelId]
+  );
+  save();
+}
+
+function getBroadcastMessage(date) {
+  const result = db.exec(
+    `SELECT message_id, channel_id FROM broadcast_messages WHERE date = ?`,
+    [date]
+  );
+  if (!result[0]) return null;
+  return { messageId: result[0].values[0][0], channelId: result[0].values[0][1] };
+}
+
 module.exports = {
   initDB,
   addMember,
@@ -184,4 +211,6 @@ module.exports = {
   getPendingMembers,
   getStreak,
   getWeeklyStats,
+  setBroadcastMessage,
+  getBroadcastMessage,
 };
