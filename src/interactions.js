@@ -1,4 +1,5 @@
 const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const dayjs = require("dayjs");
 const db = require("./db");
 const {
   getToday,
@@ -62,13 +63,18 @@ async function handleButton(interaction) {
 
   // Reply ephemeral (only user sees)
   const streak = db.getStreak(userId);
+  const myCheckin = db.getCheckins(today).find((c) => c.discordId === userId);
+  const clickedAt = myCheckin?.confirmedAt
+    ? dayjs(myCheckin.confirmedAt).format("HH:mm:ss.SSS")
+    : "--:--:--.---";
+
   let msg;
   if (status === "done") {
     const rank = getDailyRank(userId, today);
     const earned = pointsForRank(rank, "done");
     const weeklyTotal = getUserWeeklyScore(userId);
     msg = [
-      `✅ Confirmed!`,
+      `✅ Confirmed! กดเมื่อ \`${clickedAt}\``,
       `🏁 Rank วันนี้: **#${rank}** (+${earned} pts)`,
       `🏆 รวมสัปดาห์นี้: **${weeklyTotal} pts**`,
       `🔥 Streak: **${streak} days**`,
@@ -76,7 +82,7 @@ async function handleButton(interaction) {
   } else {
     const weeklyTotal = getUserWeeklyScore(userId);
     msg = [
-      `⏭️ Skipped today (ลา/WFH) (+1 pt)`,
+      `⏭️ Skipped today (ลา/WFH) (+1 pt) — กดเมื่อ \`${clickedAt}\``,
       `🏆 รวมสัปดาห์นี้: **${weeklyTotal} pts**`,
     ].join("\n");
   }

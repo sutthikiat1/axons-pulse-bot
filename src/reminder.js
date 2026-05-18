@@ -111,6 +111,13 @@ function buildWeeklyScoreboardText() {
     .join("\n");
 }
 
+function getWeeklyPeriodText() {
+  const weekStart = dayjs(getWeekStart());
+  const weekEnd = weekStart.add(6, "day"); // Sunday
+  const nextReset = weekStart.add(7, "day"); // Next Monday
+  return `📅 ช่วง ${weekStart.format("DD MMM")} – ${weekEnd.format("DD MMM")} • 🔄 รีเซ็ตจันทร์ ${nextReset.format("DD MMM")} 00:00 น.`;
+}
+
 // ── Build broadcast embed with live attendee list ──
 
 function buildBroadcastEmbed() {
@@ -128,10 +135,10 @@ function buildBroadcastEmbed() {
     attendeeText = checkins
       .map((c, i) => {
         const time = c.confirmedAt
-          ? dayjs(c.confirmedAt).format("HH:mm")
-          : "--:--";
+          ? dayjs(c.confirmedAt).format("HH:mm:ss.SSS")
+          : "--:--:--.---";
         const icon = c.status === "done" ? "✅" : "⏭️";
-        return `${i + 1}. ${icon} <@${c.discordId}> — ${c.displayName} @ ${time}`;
+        return `${i + 1}. ${icon} <@${c.discordId}> — ${c.displayName} @ \`${time}\``;
       })
       .join("\n");
   } else {
@@ -139,7 +146,7 @@ function buildBroadcastEmbed() {
   }
 
   const scoreboardText = buildWeeklyScoreboardText();
-  const weekStart = getWeekStart();
+  const periodText = getWeeklyPeriodText();
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
@@ -155,7 +162,8 @@ function buildBroadcastEmbed() {
         `📋 **Attendees**`,
         attendeeText,
         "",
-        `🏆 **Weekly Scoreboard** (since ${dayjs(weekStart).format("DD MMM")})`,
+        `🏆 **Weekly Scoreboard**`,
+        periodText,
         scoreboardText,
       ].join("\n"),
     )
@@ -264,11 +272,11 @@ function buildSummaryEmbed() {
   }
 
   // Weekly scoreboard (resets every Monday)
-  const weekStart = getWeekStart();
   const scoreboardText = buildWeeklyScoreboardText();
+  const periodText = getWeeklyPeriodText();
   embed.addFields({
-    name: `🏆 Weekly Scoreboard (since ${dayjs(weekStart).format("DD MMM")})`,
-    value: scoreboardText,
+    name: `🏆 Weekly Scoreboard`,
+    value: `${periodText}\n${scoreboardText}`,
   });
 
   embed.setTimestamp().setFooter({ text: "AXONS Pulse Bot • Daily Summary" });
@@ -291,7 +299,9 @@ function buildExportCSV(date) {
 
   let i = 1;
   for (const c of checkins) {
-    const time = c.confirmedAt ? dayjs(c.confirmedAt).format("HH:mm:ss") : "";
+    const time = c.confirmedAt
+      ? dayjs(c.confirmedAt).format("HH:mm:ss.SSS")
+      : "";
     rows.push([i++, c.discordId, c.displayName, c.status, time]);
   }
   for (const m of pending) {
