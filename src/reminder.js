@@ -19,6 +19,98 @@ function getStreakEmoji(streak) {
   return "";
 }
 
+// ── Scoring ──
+// Reset weekly: scores are computed dynamically from Monday → today.
+
+function getWeekStart() {
+  const today = dayjs();
+  const dow = today.day(); // Sun=0, Mon=1, ..., Sat=6
+  const offset = dow === 0 ? -6 : 1 - dow;
+  return today.add(offset, "day").format("YYYY-MM-DD");
+}
+
+function pointsForRank(rank, status) {
+  if (status === "skip") return 1;
+  if (status === "missed") return 0;
+  // status === "done"
+  if (rank === 1) return 10;
+  if (rank === 2) return 8;
+  if (rank === 3) return 6;
+  if (rank <= 5) return 4;
+  return 2;
+}
+
+function getDailyRank(discordId, date) {
+  const dayCheckins = db.getCheckins(date);
+  const doneSorted = dayCheckins
+    .filter((c) => c.status === "done")
+    .sort((a, b) => (a.confirmedAt || "").localeCompare(b.confirmedAt || ""));
+  const idx = doneSorted.findIndex((c) => c.discordId === discordId);
+  return idx === -1 ? null : idx + 1;
+}
+
+function calculateWeeklyScores() {
+  const weekStart = getWeekStart();
+  const today = getToday();
+  const checkins = db.getWeeklyCheckins(weekStart, today);
+
+  const byDate = {};
+  for (const c of checkins) {
+    if (!byDate[c.date]) byDate[c.date] = [];
+    byDate[c.date].push(c);
+  }
+
+  const scores = {};
+  for (const date in byDate) {
+    const dayCheckins = byDate[date];
+    const doneSorted = dayCheckins
+      .filter((c) => c.status === "done")
+      .sort((a, b) => (a.confirmedAt || "").localeCompare(b.confirmedAt || ""));
+
+    doneSorted.forEach((c, idx) => {
+      const pts = pointsForRank(idx + 1, "done");
+      if (!scores[c.discordId])
+        scores[c.discordId] = { displayName: c.displayName, points: 0 };
+      scores[c.discordId].points += pts;
+    });
+
+    for (const c of dayCheckins) {
+      if (c.status === "skip" || c.status === "missed") {
+        const pts = pointsForRank(0, c.status);
+        if (!scores[c.discordId])
+          scores[c.discordId] = { displayName: c.displayName, points: 0 };
+        scores[c.discordId].points += pts;
+      }
+    }
+  }
+
+  return Object.entries(scores)
+    .map(([discordId, s]) => ({
+      discordId,
+      displayName: s.displayName,
+      points: s.points,
+    }))
+    .sort((a, b) => b.points - a.points);
+}
+
+function getUserWeeklyScore(discordId) {
+  const all = calculateWeeklyScores();
+  return all.find((s) => s.discordId === discordId)?.points || 0;
+}
+
+function buildWeeklyScoreboardText() {
+  const scores = calculateWeeklyScores();
+  if (scores.length === 0) return "_ยังไม่มีคะแนนสัปดาห์นี้_";
+  const medals = ["🥇", "🥈", "🥉"];
+  return scores
+    .slice(0, 10)
+    .map((s, i) => {
+      const prefix = medals[i] || `**${i + 1}.**`;
+      return `${prefix} <@${s.discordId}> — **${s.points}** pts`;
+    })
+    .join("\n");
+}
+
 // ── Build broadcast embed with live attendee list ──
 
 function buildBroadcastEmbed() {
@@ -46,6 +138,9 @@ function buildBroadcastEmbed() {
     attendeeText = "_ยังไม่มีคน check-in_";
   }
 
+  const scoreboardText = buildWeeklyScoreboardText();
+  const weekStart = getWeekStart();
+
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
     .setTitle("📋 AXONS Pulse — Daily Check-in")
@@ -59,6 +154,9 @@ function buildBroadcastEmbed() {
         "",
         `📋 **Attendees**`,
         attendeeText,
+        "",
+        `🏆 **Weekly Scoreboard** (since ${dayjs(weekStart).format("DD MMM")})`,
+        scoreboardText,
       ].join("\n"),
     )
     .setTimestamp()
@@ -73,10 +171,10 @@ function buildBroadcastEmbed() {
       .setCustomId("pulse_skip")
       .setLabel("⏭️ Skip (ลา/WFH)")
       .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("pulse_export")
-      .setLabel("📊 Export CSV")
-      .setStyle(ButtonStyle.Primary),
+    // new ButtonBuilder()
+    //   .setCustomId("pulse_export")
+    //   .setLabel("📊 Export CSV")
+    //   .setStyle(ButtonStyle.Primary),
   );
 
   return { embed, buttons };
@@ -165,17 +263,13 @@ function buildSummaryEmbed() {
     });
   }
 
-  // if (streaks.length > 0) {
-  //   embed.addFields({
-  //     name: "🏆 Top Streaks",
-  //     value: streaks
-  //       .map(
-  //         (m, i) =>
-  //           `${["🥇", "🥈", "🥉"][i]} <@${m.discordId}> — ${m.streak} days ${getStreakEmoji(m.streak)}`
-  //       )
-  //       .join("\n"),
-  //   });
-  // }
+  // Weekly scoreboard (resets every Monday)
+  const weekStart = getWeekStart();
+  const scoreboardText = buildWeeklyScoreboardText();
+  embed.addFields({
+    name: `🏆 Weekly Scoreboard (since ${dayjs(weekStart).format("DD MMM")})`,
+    value: scoreboardText,
+  });
 
   embed.setTimestamp().setFooter({ text: "AXONS Pulse Bot • Daily Summary" });
   return embed;
@@ -279,4 +373,10 @@ module.exports = {
   buildExportCSV,
   buildStatusEmbed,
   buildLeaderboardEmbed,
+  getWeekStart,
+  pointsForRank,
+  getDailyRank,
+  calculateWeeklyScores,
+  getUserWeeklyScore,
+  buildWeeklyScoreboardText,
 };

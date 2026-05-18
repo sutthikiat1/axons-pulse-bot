@@ -8,6 +8,9 @@ const {
   buildLeaderboardEmbed,
   sendBroadcast,
   sendSummary,
+  getDailyRank,
+  pointsForRank,
+  getUserWeeklyScore,
 } = require("./reminder");
 
 // ── Button handler ──
@@ -16,19 +19,19 @@ async function handleButton(interaction) {
   const today = getToday();
   const userId = interaction.user.id;
 
-  // Export CSV
-  if (interaction.customId === "pulse_export") {
-    const csv = buildExportCSV(today);
-    const buffer = Buffer.from(csv, "utf-8");
-    const attachment = new AttachmentBuilder(buffer, {
-      name: `pulse-checkin-${today}.csv`,
-    });
-    return interaction.reply({
-      content: `📊 Export สำหรับวันที่ ${today}`,
-      files: [attachment],
-      ephemeral: true,
-    });
-  }
+  // Export CSV (disabled — uncomment to re-enable)
+  // if (interaction.customId === "pulse_export") {
+  //   const csv = buildExportCSV(today);
+  //   const buffer = Buffer.from(csv, "utf-8");
+  //   const attachment = new AttachmentBuilder(buffer, {
+  //     name: `pulse-checkin-${today}.csv`,
+  //   });
+  //   return interaction.reply({
+  //     content: `📊 Export สำหรับวันที่ ${today}`,
+  //     files: [attachment],
+  //     ephemeral: true,
+  //   });
+  // }
 
   // Check if user is a tracked member
   const members = db.getActiveMembers();
@@ -59,10 +62,24 @@ async function handleButton(interaction) {
 
   // Reply ephemeral (only user sees)
   const streak = db.getStreak(userId);
-  const msg =
-    status === "done"
-      ? `✅ Confirmed! Streak: **${streak} days**`
-      : `⏭️ Skipped today (ลา/WFH)`;
+  let msg;
+  if (status === "done") {
+    const rank = getDailyRank(userId, today);
+    const earned = pointsForRank(rank, "done");
+    const weeklyTotal = getUserWeeklyScore(userId);
+    msg = [
+      `✅ Confirmed!`,
+      `🏁 Rank วันนี้: **#${rank}** (+${earned} pts)`,
+      `🏆 รวมสัปดาห์นี้: **${weeklyTotal} pts**`,
+      `🔥 Streak: **${streak} days**`,
+    ].join("\n");
+  } else {
+    const weeklyTotal = getUserWeeklyScore(userId);
+    msg = [
+      `⏭️ Skipped today (ลา/WFH) (+1 pt)`,
+      `🏆 รวมสัปดาห์นี้: **${weeklyTotal} pts**`,
+    ].join("\n");
+  }
 
   await interaction.reply({ content: msg, ephemeral: true });
 

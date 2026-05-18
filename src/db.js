@@ -90,7 +90,7 @@ function getMemberCount() {
 function recordCheckin(discordId, date, status) {
   db.run(
     `INSERT OR REPLACE INTO checkins (discord_id, date, status, confirmed_at)
-     VALUES (?, ?, ?, datetime('now','localtime'))`,
+     VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%f','now','localtime'))`,
     [discordId, date, status],
   );
   save();
@@ -165,6 +165,26 @@ function getStreak(discordId) {
   return streak;
 }
 
+function getWeeklyCheckins(startDate, endDate) {
+  const result = db.exec(
+    `SELECT c.discord_id, m.display_name, c.date, c.status, c.confirmed_at
+     FROM checkins c
+     JOIN members m ON c.discord_id = m.discord_id
+     WHERE c.date >= ? AND c.date <= ? AND m.active = 1
+     ORDER BY c.date ASC, c.confirmed_at ASC`,
+    [startDate, endDate],
+  );
+  return (
+    result[0]?.values.map(([id, name, date, status, time]) => ({
+      discordId: id,
+      displayName: name,
+      date,
+      status,
+      confirmedAt: time,
+    })) || []
+  );
+}
+
 function getWeeklyStats(startDate, endDate) {
   const members = getActiveMembers();
   const result = db.exec(
@@ -229,6 +249,7 @@ module.exports = {
   getCheckins,
   getPendingMembers,
   getStreak,
+  getWeeklyCheckins,
   getWeeklyStats,
   setBroadcastMessage,
   getBroadcastMessage,
