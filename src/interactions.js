@@ -131,6 +131,14 @@ async function handleButton(interaction) {
   //   });
   // }
 
+  // Wait → fake reminder, no check-in recorded
+  if (interaction.customId === "pulse_wait") {
+    return interaction.reply({
+      content: "⏳ อย่าลืมบันทึกข้อมูลในระบบนะ",
+      ephemeral: true,
+    });
+  }
+
   // Done → open confirmation modal (recorded only after user submits "ยืนยัน")
   if (interaction.customId === "pulse_done") {
     const modal = new ModalBuilder()

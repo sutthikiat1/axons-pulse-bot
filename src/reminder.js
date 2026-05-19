@@ -174,11 +174,19 @@ function buildBroadcastEmbed() {
   return embed;
 }
 
-// Build Done + Skip buttons. Position swaps based on day parity:
-// even-day  → [Done, Skip], odd-day → [Skip, Done].
-function buildBroadcastButtons() {
-  const doneFirst = dayjs().date() % 2 === 0;
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
+// Build Done + Skip + Wait buttons. All 3 are shuffled to random
+// positions every broadcast. Wait is a "fake" button that only shows
+// a reminder ephemeral message — does not record a check-in.
+function buildBroadcastButtons() {
   const doneBtn = new ButtonBuilder()
     .setCustomId("pulse_done")
     .setLabel("✅ Done")
@@ -189,9 +197,13 @@ function buildBroadcastButtons() {
     .setLabel("⏭️ Skip (ลา/WFH)")
     .setStyle(ButtonStyle.Secondary);
 
-  const row = new ActionRowBuilder().addComponents(
-    ...(doneFirst ? [doneBtn, skipBtn] : [skipBtn, doneBtn]),
-  );
+  const waitBtn = new ButtonBuilder()
+    .setCustomId("pulse_wait")
+    .setLabel("⏳ Wait")
+    .setStyle(ButtonStyle.Primary);
+
+  const shuffled = shuffleArray([doneBtn, skipBtn, waitBtn]);
+  const row = new ActionRowBuilder().addComponents(...shuffled);
   return [row];
 }
 
