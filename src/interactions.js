@@ -19,11 +19,16 @@ const {
   getDailyRank,
   pointsForRank,
   getUserWeeklyScore,
+  getRandomQuestion,
+  getQuestionByIndex,
 } = require("./reminder");
+
+const FORBIDDEN_ANSWERS = new Set(["na", "no", "yes", "blank"]);
+const MIN_ANSWER_CHARS = 3;
 
 // ── Shared check-in flow (used by both button Skip and modal Done) ──
 
-async function processCheckin(interaction, status) {
+async function processCheckin(interaction, status, qa = null) {
   const today = getToday();
   const userId = interaction.user.id;
 
@@ -49,6 +54,9 @@ async function processCheckin(interaction, status) {
   }
 
   db.recordCheckin(userId, today, status);
+  if (qa) {
+    db.recordQA(userId, today, qa.questionIndex, qa.answer);
+  }
 
   const streak = db.getStreak(userId);
   const myCheckin = db.getCheckins(today).find((c) => c.discordId === userId);
@@ -61,12 +69,17 @@ async function processCheckin(interaction, status) {
     const rank = getDailyRank(userId, today);
     const earned = pointsForRank(rank, "done");
     const weeklyTotal = getUserWeeklyScore(userId);
-    msg = [
+    const lines = [
       `✅ Confirmed! บันทึกเมื่อ \`${clickedAt}\``,
       `🏁 Rank วันนี้: **#${rank}** (+${earned} pts)`,
       `🏆 รวมสัปดาห์นี้: **${weeklyTotal} pts**`,
       `🔥 Streak: **${streak} days**`,
-    ].join("\n");
+    ];
+    if (qa) {
+      const qText = getQuestionByIndex(qa.questionIndex) || "(unknown)";
+      lines.push("", "─── 🎭 คำตอบของคุณ ───", `❓ ${qText}`, `💬 ${qa.answer}`);
+    }
+    msg = lines.join("\n");
   } else {
     const weeklyTotal = getUserWeeklyScore(userId);
     msg = [
@@ -139,20 +152,21 @@ async function handleButton(interaction) {
     });
   }
 
-  // Done → open confirmation modal (recorded only after user submits "ยืนยัน")
+  // Done → open daily-question modal (recorded only after user submits valid answer)
   if (interaction.customId === "pulse_done") {
+    const { index, text } = getRandomQuestion();
     const modal = new ModalBuilder()
-      .setCustomId("pulse_done_confirm")
-      .setTitle("ยืนยัน Pulse Check-in");
+      .setCustomId(`pulse_done_confirm_${index}`)
+      .setTitle("🎭 ตอบคำถามก่อน check-in");
 
     const input = new TextInputBuilder()
-      .setCustomId("confirm_text")
-      .setLabel("บันทึก AXONS Pulse แล้วหรือยัง?")
-      .setPlaceholder("พิมพ์ 'ยืนยัน' เพื่อ check-in")
-      .setStyle(TextInputStyle.Short)
+      .setCustomId("answer_text")
+      .setLabel(text)
+      .setPlaceholder("ตอบอย่างน้อย 3 ตัวอักษร • ห้ามพิมมั่วพี่นัทอ่าน! 👀")
+      .setStyle(TextInputStyle.Paragraph)
       .setRequired(true)
-      .setMinLength(2)
-      .setMaxLength(50);
+      .setMinLength(MIN_ANSWER_CHARS)
+      .setMaxLength(500);
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
     return interaction.showModal(modal);
@@ -167,20 +181,29 @@ async function handleButton(interaction) {
 // ── Modal submit handler ──
 
 async function handleModalSubmit(interaction) {
-  if (interaction.customId === "pulse_done_confirm") {
-    const text = interaction.fields
-      .getTextInputValue("confirm_text")
-      .trim()
-      .toLowerCase();
-    const accepted = ["ยืนยัน", "ใช่", "yes", "y", "confirm"];
-    if (!accepted.includes(text)) {
+  if (interaction.customId.startsWith("pulse_done_confirm_")) {
+    const indexStr = interaction.customId.replace("pulse_done_confirm_", "");
+    const questionIndex = Number.parseInt(indexStr, 10);
+    const answer = interaction.fields.getTextInputValue("answer_text").trim();
+
+    // Validation: at least N characters
+    if (answer.length < MIN_ANSWER_CHARS) {
       return interaction.reply({
-        content:
-          "❌ ยังไม่ได้ยืนยัน — ต้องพิมพ์คำว่า **ยืนยัน** (หรือ yes / ใช่) เพื่อบันทึก",
+        content: `❌ ต้องตอบอย่างน้อย **${MIN_ANSWER_CHARS} ตัวอักษร** (ตอนนี้ ${answer.length}) — ลองอีกที`,
         ephemeral: true,
       });
     }
-    return processCheckin(interaction, "done");
+
+    // Validation: must not be exactly a forbidden filler word
+    const lower = answer.toLowerCase();
+    if (FORBIDDEN_ANSWERS.has(lower)) {
+      return interaction.reply({
+        content: `❌ คำตอบ "${answer}" ไม่ผ่าน — ตอบจริงจังกว่านี้หน่อย พี่นัทอ่านนะ 👀`,
+        ephemeral: true,
+      });
+    }
+
+    return processCheckin(interaction, "done", { questionIndex, answer });
   }
 }
 

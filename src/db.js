@@ -45,6 +45,16 @@ async function initDB() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS checkin_qa (
+      discord_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      question_index INTEGER NOT NULL,
+      answer TEXT NOT NULL,
+      PRIMARY KEY (discord_id, date)
+    )
+  `);
+
   save();
   console.log("[DB] Initialized successfully");
 }
@@ -234,10 +244,52 @@ function getBroadcastMessage(date) {
 }
 
 function resetToday(date) {
-  // Clear only check-ins; keep broadcast_messages so the existing
+  // Clear check-ins + Q&A; keep broadcast_messages so the existing
   // broadcast's buttons remain valid for users to re-check-in.
   db.run(`DELETE FROM checkins WHERE date = ?`, [date]);
+  db.run(`DELETE FROM checkin_qa WHERE date = ?`, [date]);
   save();
+}
+
+// ── Daily Q&A (fun question shown in Done confirmation modal) ──
+
+function recordQA(discordId, date, questionIndex, answer) {
+  db.run(
+    `INSERT OR REPLACE INTO checkin_qa (discord_id, date, question_index, answer)
+     VALUES (?, ?, ?, ?)`,
+    [discordId, date, questionIndex, answer],
+  );
+  save();
+}
+
+function getQAForDate(date) {
+  const result = db.exec(
+    `SELECT q.discord_id, m.display_name, q.question_index, q.answer
+     FROM checkin_qa q
+     JOIN members m ON q.discord_id = m.discord_id
+     WHERE q.date = ? AND m.active = 1
+     ORDER BY q.discord_id`,
+    [date],
+  );
+  return (
+    result[0]?.values.map(([id, name, qi, ans]) => ({
+      discordId: id,
+      displayName: name,
+      questionIndex: qi,
+      answer: ans,
+    })) || []
+  );
+}
+
+function getMyQA(discordId, date) {
+  const result = db.exec(
+    `SELECT question_index, answer FROM checkin_qa
+     WHERE discord_id = ? AND date = ?`,
+    [discordId, date],
+  );
+  if (!result[0]) return null;
+  const [qi, ans] = result[0].values[0];
+  return { questionIndex: qi, answer: ans };
 }
 
 module.exports = {
@@ -255,4 +307,7 @@ module.exports = {
   setBroadcastMessage,
   getBroadcastMessage,
   resetToday,
+  recordQA,
+  getQAForDate,
+  getMyQA,
 };

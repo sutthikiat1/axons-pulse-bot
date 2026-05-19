@@ -11,6 +11,69 @@ function getToday() {
   return dayjs().format("YYYY-MM-DD");
 }
 
+// ── Daily fun questions (shown in Done confirmation modal) ──
+const DAILY_QUESTIONS = [
+  "ลิเวอร์พูล กับ แมนยู ใครเก่งกว่า",
+  "ชอบเมนูอาหารอะไร 🍜",
+  "ขาดเงินหรือขาดรัก",
+  "จะลบแอปอะไร",
+  "โมโหเหมือนสัตว์อะไร",
+  "อยาก mute ใคร",
+  "รวยแล้วทำอะไร",
+  "พูดคำไหนบ่อยสุด",
+  "กินอะไรได้ทุกวัน",
+  "เพลงประจำช่วงนี้คือ",
+  "ตัวเองเป็นสีอะไร",
+  "งอนแล้วเงียบไหม",
+  "โลกแตกจะทำอะไร",
+  "คนแบบไหนน่ารำคาญ",
+  "อยากมีพลังอะไร",
+  "เหนื่อยเรื่องอะไร",
+  "อยากติดเกาะกับใคร",
+  "อยากเปลี่ยนชื่อเป็นอะไร",
+  "ซื้ออะไรเปลืองสุด",
+  "ฟังเพลงไหนวนได้",
+  "สกิลเด่นของตัวเองคือ",
+  "เรื่องไหนโป๊ะสุด",
+  "แฟนเก่าทักจะตอบว่า",
+  "มีล้านแรกจะทำอะไร",
+  "ชีวิตเหมือนวันอะไร",
+  "อยากบอกอะไรตัวเอง ✨",
+  "นอนกี่โมงเมื่อคืน",
+  "ดองแชตเก่งไหม",
+  "ติดหวานหรือสายขม",
+  "ขี้หึงไหม",
+  "ชอบคนพูดเก่งไหม",
+  "Introvert หรือ extrovert",
+  "ใช้เงินเก่งไหม",
+  "ตอนนี้อยากได้อะไรสุด",
+  "แอบส่องใครบ่อยไหม",
+  "ขี้งอนหรือขี้เบื่อ",
+  "คิดถึงใครอยู่ไหม",
+  "ติดมือถือวันละกี่ชม.",
+  "ชอบกลางวันหรือกลางคืน",
+  "มีเพลงอกหักประจำตัวไหม",
+  "ล่าสุดร้องไห้เพราะอะไร",
+  "ถ้าหายไป 1 วัน จะไปไหน",
+  "ช่วงนี้คลั่งอะไรอยู่",
+  "อยากพักหรืออยากเที่ยว",
+  "คนแบบไหนแพ้ทาง",
+  "เคยเผลอเรียกผิดชื่อไหม",
+  "ชอบตัวเองตอนอยู่กับใคร",
+  "มีเรื่องไหนอยากลืม",
+  "ตอนนี้หัวใจสีอะไร",
+  "อยากได้กอดไหม",
+  "มีเรื่องอะไรที่ยังไม่พูด 👀",
+];
+
+function getRandomQuestion() {
+  const index = Math.floor(Math.random() * DAILY_QUESTIONS.length);
+  return { index, text: DAILY_QUESTIONS[index] };
+}
+
+function getQuestionByIndex(index) {
+  return DAILY_QUESTIONS[index] ?? null;
+}
 
 function getStreakEmoji(streak) {
   if (streak >= 20) return "👑";
@@ -131,6 +194,11 @@ function buildBroadcastEmbed() {
   const skipList = checkins.filter((c) => c.status === "skip");
   const checkedIn = doneList.length + skipList.length;
 
+  // Build Q&A lookup map (only Done check-ins have Q&A)
+  const qaList = db.getQAForDate(today);
+  const qaByUser = {};
+  for (const q of qaList) qaByUser[q.discordId] = q;
+
   let attendeeText = "";
   if (checkins.length > 0) {
     attendeeText = checkins
@@ -139,7 +207,14 @@ function buildBroadcastEmbed() {
           ? dayjs(c.confirmedAt).format("HH:mm:ss.SSS")
           : "--:--:--.---";
         const icon = c.status === "done" ? "✅" : "⏭️";
-        return `${i + 1}. ${icon} <@${c.discordId}> — ${c.displayName} @ \`${time}\``;
+        let line = `${i + 1}. ${icon} <@${c.discordId}> — ${c.displayName} @ \`${time}\``;
+
+        const qa = qaByUser[c.discordId];
+        if (qa && c.status === "done") {
+          const qText = getQuestionByIndex(qa.questionIndex) || "(?)";
+          line += `\n   ❓ ${qText}\n   💬 ${qa.answer}`;
+        }
+        return line;
       })
       .join("\n");
   } else {
@@ -411,4 +486,6 @@ module.exports = {
   calculateWeeklyScores,
   getUserWeeklyScore,
   buildWeeklyScoreboardText,
+  getRandomQuestion,
+  getQuestionByIndex,
 };
