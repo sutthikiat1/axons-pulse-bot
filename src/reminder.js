@@ -155,7 +155,7 @@ function buildBroadcastEmbed() {
     .setDescription(
       [
         `📅 **${dayjs().format("DD MMM YYYY")}** (${dayjs().format("dddd")})`,
-        `⏰ Deadline: **18:00** today`,
+        `⏰ Deadline: **18:30** today`,
         "",
         `👥 **Attendee Count**`,
         `${checkedIn}/${memberCount}`,

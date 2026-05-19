@@ -89,11 +89,11 @@ function setupCronJobs() {
     { timezone: tz }
   );
 
-  // 18:00 Mon-Fri — Daily summary
+  // 18:31 Mon-Fri — Daily summary (runs after the 17:00–18:30 check-in window)
   cron.schedule(
-    "0 18 * * 1-5",
+    "31 18 * * 1-5",
     async () => {
-      console.log("[CRON] Running 18:00 summary...");
+      console.log("[CRON] Running 18:31 summary...");
       try {
         const channel = await client.channels.fetch(channelId);
         if (channel) await sendSummary(channel);
@@ -104,7 +104,7 @@ function setupCronJobs() {
     { timezone: tz }
   );
 
-  console.log(`[CRON] Scheduled: 17:00 broadcast, 18:00 summary (${tz})`);
+  console.log(`[CRON] Scheduled: 17:00 broadcast, 18:31 summary (${tz})`);
 }
 
 // ── Login ──

@@ -79,9 +79,43 @@ async function processCheckin(interaction, status) {
   await refreshBroadcastEmbed(interaction.client);
 }
 
+// Active check-in window: 17:00 – 18:30 (inclusive of 18:30:00)
+const CHECKIN_WINDOW_START_MIN = 17 * 60; // 17:00
+const CHECKIN_WINDOW_END_MIN = 18 * 60 + 30; // 18:30
+
+function isWithinCheckinWindow() {
+  const now = dayjs();
+  const minutes = now.hour() * 60 + now.minute();
+  return (
+    minutes >= CHECKIN_WINDOW_START_MIN && minutes <= CHECKIN_WINDOW_END_MIN
+  );
+}
+
 // ── Button handler ──
 
 async function handleButton(interaction) {
+  // Time gate — block clicks outside 17:00–18:30 window
+  if (!isWithinCheckinWindow()) {
+    return interaction.reply({
+      content:
+        "❌ ปุ่มใช้งานได้เฉพาะช่วง **17:00 – 18:30 น.** เท่านั้น (Asia/Bangkok)",
+      ephemeral: true,
+    });
+  }
+
+  // Only accept clicks on today's current official broadcast message.
+  // Blocks: yesterday's leftover buttons, overwritten test broadcasts,
+  // any clicks before today's broadcast has been sent.
+  const today = getToday();
+  const msgData = db.getBroadcastMessage(today);
+  if (!msgData || interaction.message?.id !== msgData.messageId) {
+    return interaction.reply({
+      content:
+        "❌ ปุ่มนี้ไม่ใช่ broadcast ล่าสุดของวันนี้ — ต้องใช้ปุ่มจาก broadcast ล่าสุดเท่านั้น (รอ 17:00 หรือดูข้อความ broadcast ใหม่สุด)",
+      ephemeral: true,
+    });
+  }
+
   // Export CSV (disabled — uncomment to re-enable)
   // if (interaction.customId === "pulse_export") {
   //   const today = getToday();
@@ -268,6 +302,16 @@ async function handleCommand(interaction) {
       await interaction.deferReply({ ephemeral: true });
       await sendSummary(interaction.channel);
       return interaction.editReply({ content: "✅ Summary sent!" });
+    }
+
+    if (sub === "reset-today") {
+      const today = getToday();
+      db.resetToday(today);
+      await refreshBroadcastEmbed(interaction.client);
+      return interaction.reply({
+        content: `🗑️ ลบ check-in ของวันที่ **${today}** แล้ว — broadcast เดิมยังกดได้ ทุกคนสามารถ check-in ใหม่ได้`,
+        ephemeral: true,
+      });
     }
   }
 }

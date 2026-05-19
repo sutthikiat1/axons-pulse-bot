@@ -58,6 +58,11 @@ const commands = [
       sub
         .setName("summary")
         .setDescription("Manually trigger the daily summary now")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("reset-today")
+        .setDescription("ลบ check-in ทั้งหมดของวันนี้ (broadcast เดิมยังกดได้)")
     ),
 ];
 

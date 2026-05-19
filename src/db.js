@@ -234,8 +234,9 @@ function getBroadcastMessage(date) {
 }
 
 function resetToday(date) {
+  // Clear only check-ins; keep broadcast_messages so the existing
+  // broadcast's buttons remain valid for users to re-check-in.
   db.run(`DELETE FROM checkins WHERE date = ?`, [date]);
-  db.run(`DELETE FROM broadcast_messages WHERE date = ?`, [date]);
   save();
 }
 
