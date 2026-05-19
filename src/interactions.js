@@ -113,13 +113,13 @@ function isWithinCheckinWindow() {
 
 async function handleButton(interaction) {
   // Time gate — block clicks outside 17:00–18:30 window
-  // if (!isWithinCheckinWindow()) {
-  //   return interaction.reply({
-  //     content:
-  //       "❌ ปุ่มใช้งานได้เฉพาะช่วง **17:00 – 18:30 น.** เท่านั้น (Asia/Bangkok)",
-  //     ephemeral: true,
-  //   });
-  // }
+  if (!isWithinCheckinWindow()) {
+    return interaction.reply({
+      content:
+        "❌ ปุ่มใช้งานได้เฉพาะช่วง **17:00 – 18:30 น.** เท่านั้น (Asia/Bangkok)",
+      ephemeral: true,
+    });
+  }
 
   // Only accept clicks on today's current official broadcast message.
   // Blocks: yesterday's leftover buttons, overwritten test broadcasts,
