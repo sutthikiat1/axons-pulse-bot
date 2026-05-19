@@ -23,7 +23,7 @@ const {
   getQuestionByIndex,
 } = require("./reminder");
 
-const FORBIDDEN_ANSWERS = new Set(["na", "no", "yes", "blank"]);
+const FORBIDDEN_ANSWERS = new Set(["na", "no", "yes", "blank", "ยืนยัน"]);
 const MIN_ANSWER_CHARS = 3;
 
 // ── Shared check-in flow (used by both button Skip and modal Done) ──
@@ -167,7 +167,7 @@ async function handleButton(interaction) {
     const input = new TextInputBuilder()
       .setCustomId("answer_text")
       .setLabel(text)
-      .setPlaceholder("ตอบอย่างน้อย 3 ตัวอักษร • ห้ามพิมมั่วพี่นัทอ่าน! 👀")
+      .setPlaceholder("ตอบอย่างน้อย 3 ตัวอักษร • ห้าม 'ยืนยัน/na/no/yes' • พี่นัทอ่าน! 👀")
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true)
       .setMinLength(MIN_ANSWER_CHARS)
