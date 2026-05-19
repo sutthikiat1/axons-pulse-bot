@@ -62,7 +62,7 @@ const commands = [
     .addSubcommand((sub) =>
       sub
         .setName("reset-today")
-        .setDescription("ลบ check-in ทั้งหมดของวันนี้ (broadcast เดิมยังกดได้)")
+        .setDescription("Clear all check-ins for today")
     ),
 ];
 
