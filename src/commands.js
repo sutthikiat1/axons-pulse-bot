@@ -73,8 +73,24 @@ async function registerCommands(client) {
     return;
   }
 
-  await guild.commands.set(commands.map((c) => c.toJSON()));
-  console.log(`[CMD] Registered ${commands.length} slash commands`);
+  try {
+    // Force clear existing commands first so Discord drops cached version
+    console.log("[CMD] Clearing existing guild commands...");
+    await guild.commands.set([]);
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const payload = commands.map((c) => c.toJSON());
+    console.log(`[CMD] Sending ${payload.length} commands to Discord:`);
+    payload.forEach((c) => {
+      console.log(`[CMD]   ${c.name} (${c.options?.length || 0} subs)`);
+      c.options?.forEach((s) => console.log(`[CMD]     • ${s.name}`));
+    });
+
+    const result = await guild.commands.set(payload);
+    console.log(`[CMD] ✅ Registered ${result.size} commands successfully`);
+  } catch (err) {
+    console.error("[CMD] ❌ Registration failed:", err);
+  }
 }
 
 module.exports = { registerCommands };
