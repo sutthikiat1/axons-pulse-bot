@@ -1,4 +1,11 @@
-const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const {
+  EmbedBuilder,
+  AttachmentBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+} = require("discord.js");
 const dayjs = require("dayjs");
 const db = require("./db");
 const {
@@ -14,27 +21,12 @@ const {
   getUserWeeklyScore,
 } = require("./reminder");
 
-// ── Button handler ──
+// ── Shared check-in flow (used by both button Skip and modal Done) ──
 
-async function handleButton(interaction) {
+async function processCheckin(interaction, status) {
   const today = getToday();
   const userId = interaction.user.id;
 
-  // Export CSV (disabled — uncomment to re-enable)
-  // if (interaction.customId === "pulse_export") {
-  //   const csv = buildExportCSV(today);
-  //   const buffer = Buffer.from(csv, "utf-8");
-  //   const attachment = new AttachmentBuilder(buffer, {
-  //     name: `pulse-checkin-${today}.csv`,
-  //   });
-  //   return interaction.reply({
-  //     content: `📊 Export สำหรับวันที่ ${today}`,
-  //     files: [attachment],
-  //     ephemeral: true,
-  //   });
-  // }
-
-  // Check if user is a tracked member
   const members = db.getActiveMembers();
   const isMember = members.some((m) => m.discordId === userId);
 
@@ -46,7 +38,6 @@ async function handleButton(interaction) {
     });
   }
 
-  // Check if already checked in today
   const checkins = db.getCheckins(today);
   const existing = checkins.find((c) => c.discordId === userId);
 
@@ -57,11 +48,8 @@ async function handleButton(interaction) {
     });
   }
 
-  // Record check-in
-  const status = interaction.customId === "pulse_done" ? "done" : "skip";
   db.recordCheckin(userId, today, status);
 
-  // Reply ephemeral (only user sees)
   const streak = db.getStreak(userId);
   const myCheckin = db.getCheckins(today).find((c) => c.discordId === userId);
   const clickedAt = myCheckin?.confirmedAt
@@ -74,7 +62,7 @@ async function handleButton(interaction) {
     const earned = pointsForRank(rank, "done");
     const weeklyTotal = getUserWeeklyScore(userId);
     msg = [
-      `✅ Confirmed! กดเมื่อ \`${clickedAt}\``,
+      `✅ Confirmed! บันทึกเมื่อ \`${clickedAt}\``,
       `🏁 Rank วันนี้: **#${rank}** (+${earned} pts)`,
       `🏆 รวมสัปดาห์นี้: **${weeklyTotal} pts**`,
       `🔥 Streak: **${streak} days**`,
@@ -88,9 +76,70 @@ async function handleButton(interaction) {
   }
 
   await interaction.reply({ content: msg, ephemeral: true });
-
-  // Refresh the broadcast embed with updated attendee list
   await refreshBroadcastEmbed(interaction.client);
+}
+
+// ── Button handler ──
+
+async function handleButton(interaction) {
+  // Export CSV (disabled — uncomment to re-enable)
+  // if (interaction.customId === "pulse_export") {
+  //   const today = getToday();
+  //   const csv = buildExportCSV(today);
+  //   const buffer = Buffer.from(csv, "utf-8");
+  //   const attachment = new AttachmentBuilder(buffer, {
+  //     name: `pulse-checkin-${today}.csv`,
+  //   });
+  //   return interaction.reply({
+  //     content: `📊 Export สำหรับวันที่ ${today}`,
+  //     files: [attachment],
+  //     ephemeral: true,
+  //   });
+  // }
+
+  // Done → open confirmation modal (recorded only after user submits "ยืนยัน")
+  if (interaction.customId === "pulse_done") {
+    const modal = new ModalBuilder()
+      .setCustomId("pulse_done_confirm")
+      .setTitle("ยืนยัน Pulse Check-in");
+
+    const input = new TextInputBuilder()
+      .setCustomId("confirm_text")
+      .setLabel("บันทึก AXONS Pulse แล้วหรือยัง?")
+      .setPlaceholder("พิมพ์ 'ยืนยัน' เพื่อ check-in")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMinLength(2)
+      .setMaxLength(50);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    return interaction.showModal(modal);
+  }
+
+  // Skip → record immediately (no confirmation needed)
+  if (interaction.customId === "pulse_skip") {
+    return processCheckin(interaction, "skip");
+  }
+}
+
+// ── Modal submit handler ──
+
+async function handleModalSubmit(interaction) {
+  if (interaction.customId === "pulse_done_confirm") {
+    const text = interaction.fields
+      .getTextInputValue("confirm_text")
+      .trim()
+      .toLowerCase();
+    const accepted = ["ยืนยัน", "ใช่", "yes", "y", "confirm"];
+    if (!accepted.includes(text)) {
+      return interaction.reply({
+        content:
+          "❌ ยังไม่ได้ยืนยัน — ต้องพิมพ์คำว่า **ยืนยัน** (หรือ yes / ใช่) เพื่อบันทึก",
+        ephemeral: true,
+      });
+    }
+    return processCheckin(interaction, "done");
+  }
 }
 
 // ── Slash command handler ──
@@ -223,4 +272,4 @@ async function handleCommand(interaction) {
   }
 }
 
-module.exports = { handleButton, handleCommand };
+module.exports = { handleButton, handleCommand, handleModalSubmit };

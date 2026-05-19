@@ -11,6 +11,7 @@ function getToday() {
   return dayjs().format("YYYY-MM-DD");
 }
 
+
 function getStreakEmoji(streak) {
   if (streak >= 20) return "👑";
   if (streak >= 10) return "⭐";
@@ -170,30 +171,37 @@ function buildBroadcastEmbed() {
     .setTimestamp()
     .setFooter({ text: "AXONS Pulse Bot • กด Done เมื่อทำ Pulse แล้ว" });
 
-  const buttons = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("pulse_done")
-      .setLabel("✅ Done")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("pulse_skip")
-      .setLabel("⏭️ Skip (ลา/WFH)")
-      .setStyle(ButtonStyle.Secondary),
-    // new ButtonBuilder()
-    //   .setCustomId("pulse_export")
-    //   .setLabel("📊 Export CSV")
-    //   .setStyle(ButtonStyle.Primary),
-  );
+  return embed;
+}
 
-  return { embed, buttons };
+// Build Done + Skip buttons. Position swaps based on day parity:
+// even-day  → [Done, Skip], odd-day → [Skip, Done].
+function buildBroadcastButtons() {
+  const doneFirst = dayjs().date() % 2 === 0;
+
+  const doneBtn = new ButtonBuilder()
+    .setCustomId("pulse_done")
+    .setLabel("✅ Done")
+    .setStyle(ButtonStyle.Success);
+
+  const skipBtn = new ButtonBuilder()
+    .setCustomId("pulse_skip")
+    .setLabel("⏭️ Skip (ลา/WFH)")
+    .setStyle(ButtonStyle.Secondary);
+
+  const row = new ActionRowBuilder().addComponents(
+    ...(doneFirst ? [doneBtn, skipBtn] : [skipBtn, doneBtn]),
+  );
+  return [row];
 }
 
 async function sendBroadcast(channel) {
-  const { embed, buttons } = buildBroadcastEmbed();
+  const embed = buildBroadcastEmbed();
+  const components = buildBroadcastButtons();
   const message = await channel.send({
     content: "@everyone",
     embeds: [embed],
-    components: [buttons],
+    components,
   });
 
   db.setBroadcastMessage(getToday(), message.id, channel.id);
@@ -211,8 +219,10 @@ async function refreshBroadcastEmbed(client) {
   try {
     const channel = await client.channels.fetch(msgData.channelId);
     const message = await channel.messages.fetch(msgData.messageId);
-    const { embed, buttons } = buildBroadcastEmbed();
-    await message.edit({ embeds: [embed], components: [buttons] });
+    const embed = buildBroadcastEmbed();
+    // Only update embed; keep existing components so the shuffled
+    // Done position stays fixed for the whole day.
+    await message.edit({ embeds: [embed] });
   } catch (err) {
     console.error("[REFRESH] Failed to update broadcast:", err.message);
   }

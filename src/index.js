@@ -4,7 +4,11 @@ const { Client, GatewayIntentBits, Events } = require("discord.js");
 const cron = require("node-cron");
 const db = require("./db");
 const { registerCommands } = require("./commands");
-const { handleButton, handleCommand } = require("./interactions");
+const {
+  handleButton,
+  handleCommand,
+  handleModalSubmit,
+} = require("./interactions");
 const { sendBroadcast, sendSummary } = require("./reminder");
 
 // ── Validate env ──
@@ -48,6 +52,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleButton(interaction);
     } else if (interaction.isChatInputCommand()) {
       await handleCommand(interaction);
+    } else if (interaction.isModalSubmit()) {
+      await handleModalSubmit(interaction);
     }
   } catch (error) {
     console.error("[ERROR] Interaction failed:", error);
