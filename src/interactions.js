@@ -23,15 +23,9 @@ const {
   getQuestionByIndex,
 } = require("./reminder");
 
-const FORBIDDEN_ANSWERS = new Set([
-  "na",
-  "no",
-  "yes",
-  "blank",
-  "ยืนยัน",
-  "ไม่มี",
-]);
-const MIN_ANSWER_CHARS = 3;
+// Quiz mode: the answer in the modal must match this exactly (after trim).
+// Wrong answer = no check-in recorded.
+const CORRECT_ANSWER = "เย็น";
 
 // ── Shared check-in flow (used by both button Skip and modal Done) ──
 
@@ -174,11 +168,10 @@ async function handleButton(interaction) {
     const input = new TextInputBuilder()
       .setCustomId("answer_text")
       .setLabel(text)
-      .setPlaceholder("ห้ามพิมมั่ว พี่นัทอ่าน!")
-      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder("ตอบให้ถูก พิมผิด = ไม่บันทึก")
+      .setStyle(TextInputStyle.Short)
       .setRequired(true)
-      .setMinLength(MIN_ANSWER_CHARS)
-      .setMaxLength(500);
+      .setMaxLength(50);
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
     return interaction.showModal(modal);
@@ -198,19 +191,10 @@ async function handleModalSubmit(interaction) {
     const questionIndex = Number.parseInt(indexStr, 10);
     const answer = interaction.fields.getTextInputValue("answer_text").trim();
 
-    // Validation: at least N characters
-    if (answer.length < MIN_ANSWER_CHARS) {
+    // Validation: must match the correct answer exactly (after trim)
+    if (answer !== CORRECT_ANSWER) {
       return interaction.reply({
-        content: `❌ ต้องตอบอย่างน้อย **${MIN_ANSWER_CHARS} ตัวอักษร** (ตอนนี้ ${answer.length}) — ลองอีกที`,
-        ephemeral: true,
-      });
-    }
-
-    // Validation: must not be exactly a forbidden filler word
-    const lower = answer.toLowerCase();
-    if (FORBIDDEN_ANSWERS.has(lower)) {
-      return interaction.reply({
-        content: `❌ คำตอบ "${answer}" ไม่ผ่าน — ตอบจริงจังกว่านี้หน่อย พี่นัทอ่านนะ 👀`,
+        content: `❌ ตอบไม่ถูก ไม่บันทึกข้อมูล — ลองอีกที (กด Done ใหม่)`,
         ephemeral: true,
       });
     }
