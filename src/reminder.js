@@ -15,7 +15,7 @@ function getToday() {
 // Single-question mode for today — everyone gets the same prompt.
 // To restore the full random pool: comment out the line below and
 // uncomment the array beneath it.
-const DAILY_QUESTIONS = ["น้ำเปล่าใส่ตู้เย็นแล้วจะเย็นหรือร้อน?"];
+const DAILY_QUESTIONS = ["มือถือใช้โทรหรือใช้ทอดไข่?"];
 
 // const DAILY_QUESTIONS = [
 //   "ลิเวอร์พูล กับ แมนยู ใครเก่งกว่า",
@@ -235,7 +235,7 @@ function buildBroadcastEmbed() {
     .setDescription(
       [
         `📅 **${dayjs().format("DD MMM YYYY")}** (${dayjs().format("dddd")})`,
-        `⏰ Deadline: **18:30** today`,
+        `⏰ Deadline: **19:00** today`,
         "",
         `👥 **Attendee Count**`,
         `${checkedIn}/${memberCount}`,
