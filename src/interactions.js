@@ -25,7 +25,7 @@ const {
 
 // Quiz mode: the answer in the modal must match this exactly (after trim).
 // Wrong answer = no check-in recorded.
-const CORRECT_ANSWER = "ใช้โทร";
+const CORRECT_ANSWER = "ณัฐธยาน์";
 
 // ── Shared check-in flow (used by both button Skip and modal Done) ──
 
@@ -98,8 +98,8 @@ async function processCheckin(interaction, status, qa = null) {
   await refreshBroadcastEmbed(interaction.client);
 }
 
-// Active check-in window: 18:00 – 19:00 (inclusive of 19:00:00)
-const CHECKIN_WINDOW_START_MIN = 18 * 60; // 18:00
+// Active check-in window: 17:00 – 19:00 (inclusive of 19:00:00)
+const CHECKIN_WINDOW_START_MIN = 17 * 60; // 17:00
 const CHECKIN_WINDOW_END_MIN = 19 * 60; // 19:00
 
 function isWithinCheckinWindow() {
@@ -113,11 +113,11 @@ function isWithinCheckinWindow() {
 // ── Button handler ──
 
 async function handleButton(interaction) {
-  // Time gate — block clicks outside 18:00–19:00 window
+  // Time gate — block clicks outside 17:00–19:00 window
   if (!isWithinCheckinWindow()) {
     return interaction.reply({
       content:
-        "❌ ปุ่มใช้งานได้เฉพาะช่วง **18:00 – 19:00 น.** เท่านั้น (Asia/Bangkok)",
+        "❌ ปุ่มใช้งานได้เฉพาะช่วง **17:00 – 19:00 น.** เท่านั้น (Asia/Bangkok)",
       ephemeral: true,
     });
   }
