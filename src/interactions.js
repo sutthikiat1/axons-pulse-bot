@@ -98,9 +98,9 @@ async function processCheckin(interaction, status, qa = null) {
   await refreshBroadcastEmbed(interaction.client);
 }
 
-// Active check-in window: 17:00 – 18:30 (inclusive of 18:30:00)
-const CHECKIN_WINDOW_START_MIN = 17 * 60; // 17:00
-const CHECKIN_WINDOW_END_MIN = 18 * 60 + 30; // 18:30
+// Active check-in window: 18:00 – 19:00 (inclusive of 19:00:00)
+const CHECKIN_WINDOW_START_MIN = 18 * 60; // 18:00
+const CHECKIN_WINDOW_END_MIN = 19 * 60; // 19:00
 
 function isWithinCheckinWindow() {
   const now = dayjs();
@@ -113,27 +113,27 @@ function isWithinCheckinWindow() {
 // ── Button handler ──
 
 async function handleButton(interaction) {
-  // Time gate temporarily disabled — uncomment to re-enable window enforcement
-  // if (!isWithinCheckinWindow()) {
-  //   return interaction.reply({
-  //     content:
-  //       "❌ ปุ่มใช้งานได้เฉพาะช่วง **17:00 – 18:30 น.** เท่านั้น (Asia/Bangkok)",
-  //     ephemeral: true,
-  //   });
-  // }
+  // Time gate — block clicks outside 18:00–19:00 window
+  if (!isWithinCheckinWindow()) {
+    return interaction.reply({
+      content:
+        "❌ ปุ่มใช้งานได้เฉพาะช่วง **18:00 – 19:00 น.** เท่านั้น (Asia/Bangkok)",
+      ephemeral: true,
+    });
+  }
 
   // Only accept clicks on today's current official broadcast message.
   // Blocks: yesterday's leftover buttons, overwritten test broadcasts,
   // any clicks before today's broadcast has been sent.
-  const today = getToday();
-  const msgData = db.getBroadcastMessage(today);
-  if (!msgData || interaction.message?.id !== msgData.messageId) {
-    return interaction.reply({
-      content:
-        "❌ ปุ่มนี้ไม่ใช่ broadcast ล่าสุดของวันนี้ — ต้องใช้ปุ่มจาก broadcast ล่าสุดเท่านั้น (รอ 17:00 หรือดูข้อความ broadcast ใหม่สุด)",
-      ephemeral: true,
-    });
-  }
+  // const today = getToday();
+  // const msgData = db.getBroadcastMessage(today);
+  // if (!msgData || interaction.message?.id !== msgData.messageId) {
+  //   return interaction.reply({
+  //     content:
+  //       "❌ ปุ่มนี้ไม่ใช่ broadcast ล่าสุดของวันนี้ — ต้องใช้ปุ่มจาก broadcast ล่าสุดเท่านั้น (รอ 17:00 หรือดูข้อความ broadcast ใหม่สุด)",
+  //     ephemeral: true,
+  //   });
+  // }
 
   // Export CSV (disabled — uncomment to re-enable)
   // if (interaction.customId === "pulse_export") {
