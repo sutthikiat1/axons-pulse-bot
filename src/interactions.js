@@ -23,8 +23,9 @@ const {
   getQuestionByIndex,
 } = require("./reminder");
 
-// Open-answer mode: any non-empty input (Discord enforces min 3 chars
-// via the modal input). No exact-match validation.
+// Quiz mode: the answer in the modal must match this exactly (after trim).
+// Wrong answer = no check-in recorded.
+const CORRECT_ANSWER = "60";
 
 // ── Shared check-in flow (used by both button Skip and modal Done) ──
 
@@ -167,11 +168,10 @@ async function handleButton(interaction) {
     const input = new TextInputBuilder()
       .setCustomId("answer_text")
       .setLabel(text)
-      .setPlaceholder("ตอบอะไรก็ได้ (อย่างน้อย 3 ตัวอักษร)")
-      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder("ตอบให้ถูก พิมผิด = ไม่บันทึก")
+      .setStyle(TextInputStyle.Short)
       .setRequired(true)
-      .setMinLength(3)
-      .setMaxLength(500);
+      .setMaxLength(50);
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
     return interaction.showModal(modal);
@@ -191,8 +191,14 @@ async function handleModalSubmit(interaction) {
     const questionIndex = Number.parseInt(indexStr, 10);
     const answer = interaction.fields.getTextInputValue("answer_text").trim();
 
-    // Open answer — any non-empty input is accepted (min length
-    // already enforced by Discord modal input)
+    // Validation: must match the correct answer exactly (after trim)
+    if (answer !== CORRECT_ANSWER) {
+      return interaction.reply({
+        content: `❌ ตอบไม่ถูก ไม่บันทึกข้อมูล — ลองอีกที (กด Done ใหม่)`,
+        ephemeral: true,
+      });
+    }
+
     return processCheckin(interaction, "done", { questionIndex, answer });
   }
 }

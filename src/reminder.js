@@ -12,10 +12,12 @@ function getToday() {
 }
 
 // ── Daily fun questions (shown in Done confirmation modal) ──
-// Random pool — each Done click picks one question at random.
-// To switch back to a single shared question, comment out this array
-// and uncomment a single-element array like:
-// const DAILY_QUESTIONS = ["ให้กรอกชื่อจริงพี่นัท!"];
+// Single-question mode (Mode B) — everyone gets the same prompt today.
+// To restore the random pool, comment out the line below and
+// uncomment the 51-item array.
+const DAILY_QUESTIONS = ["ครึ่งหนึ่งของ 100 บวก 10 เท่ากับเท่าไหร่"];
+
+/*
 const DAILY_QUESTIONS = [
   "ลิเวอร์พูล กับ แมนยู ใครเก่งกว่า",
   "ชอบเมนูอาหารอะไร 🍜",
@@ -69,6 +71,7 @@ const DAILY_QUESTIONS = [
   "อยากได้กอดไหม",
   "มีเรื่องอะไรที่ยังไม่พูด 👀",
 ];
+*/
 
 function getRandomQuestion() {
   const index = Math.floor(Math.random() * DAILY_QUESTIONS.length);
