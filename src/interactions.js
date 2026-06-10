@@ -23,9 +23,11 @@ const {
   getQuestionByIndex,
 } = require("./reminder");
 
-// Quiz mode: the answer in the modal must match this exactly (after trim).
-// Wrong answer = no check-in recorded.
-const CORRECT_ANSWER = "60";
+// Question/answer mode driven by src/questions.config.js
+const {
+  isFixedMode,
+  getCorrectAnswer,
+} = require("./questions.config");
 
 // ── Shared check-in flow (used by both button Skip and modal Done) ──
 
@@ -165,13 +167,20 @@ async function handleButton(interaction) {
       .setCustomId(`pulse_done_confirm_${index}`)
       .setTitle("🎭 ตอบคำถามก่อน check-in");
 
+    const fixed = isFixedMode();
     const input = new TextInputBuilder()
       .setCustomId("answer_text")
       .setLabel(text)
-      .setPlaceholder("ตอบให้ถูก พิมผิด = ไม่บันทึก")
-      .setStyle(TextInputStyle.Short)
+      .setPlaceholder(
+        fixed
+          ? "ตอบให้ถูก พิมผิด = ไม่บันทึก"
+          : "ตอบอะไรก็ได้ (อย่างน้อย 3 ตัวอักษร)",
+      )
+      .setStyle(fixed ? TextInputStyle.Short : TextInputStyle.Paragraph)
       .setRequired(true)
-      .setMaxLength(50);
+      .setMaxLength(fixed ? 50 : 500);
+
+    if (!fixed) input.setMinLength(3);
 
     modal.addComponents(new ActionRowBuilder().addComponents(input));
     return interaction.showModal(modal);
@@ -191,8 +200,9 @@ async function handleModalSubmit(interaction) {
     const questionIndex = Number.parseInt(indexStr, 10);
     const answer = interaction.fields.getTextInputValue("answer_text").trim();
 
-    // Validation: must match the correct answer exactly (after trim)
-    if (answer !== CORRECT_ANSWER) {
+    // Validation: in fixed mode, must exact-match the correct answer
+    const correctAnswer = getCorrectAnswer();
+    if (correctAnswer !== null && answer !== correctAnswer) {
       return interaction.reply({
         content: `❌ ตอบไม่ถูก ไม่บันทึกข้อมูล — ลองอีกที (กด Done ใหม่)`,
         ephemeral: true,

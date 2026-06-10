@@ -10,8 +10,9 @@ Production รันบน Railway, auto-deploy เมื่อ push เข้�
 - [src/index.js](src/index.js) — entry point, cron schedules, interaction router
 - [src/db.js](src/db.js) — sql.js layer: members, checkins, broadcast_messages, checkin_qa
 - [src/commands.js](src/commands.js) — Discord slash command definitions (`/pulse`, `/pulse-admin`)
-- [src/reminder.js](src/reminder.js) — embeds, buttons, scoring, **DAILY_QUESTIONS array**, question helpers
-- [src/interactions.js](src/interactions.js) — button/modal/command handlers, **CORRECT_ANSWER**, **time gate**
+- [src/questions.config.js](src/questions.config.js) — **คำถาม + คำตอบ + โหมด (open/fixed)** — แก้ที่นี่ที่เดียวจบ
+- [src/reminder.js](src/reminder.js) — embeds, buttons, scoring, question helpers (อ่าน pool จาก config)
+- [src/interactions.js](src/interactions.js) — button/modal/command handlers, **time gate**, validation logic (อ่าน mode/answer จาก config)
 
 ---
 
@@ -19,50 +20,37 @@ Production รันบน Railway, auto-deploy เมื่อ push เข้�
 
 ### 🎯 เปลี่ยนคำถามและโหมดการตอบ
 
-**Mode A: คำถามสุ่มจาก pool + ตอบอะไรก็ได้** (default)
+แก้ที่ [src/questions.config.js](src/questions.config.js) ที่เดียว — โค้ดอื่นไม่ต้องแตะ
+
+**Open mode — คำถามสุ่ม + ตอบอะไรก็ได้** (default)
 ```js
-// reminder.js
-const DAILY_QUESTIONS = [
-  "คำถาม 1", "คำถาม 2", ...
-];
-
-// interactions.js
-// (no CORRECT_ANSWER const)
-
-// In handleButton (Done):
-.setStyle(TextInputStyle.Paragraph)
-.setMinLength(3)
-.setMaxLength(500);
-
-// In handleModalSubmit:
-return processCheckin(interaction, "done", { questionIndex, answer });
-// (no exact-match check)
+const config = {
+  mode: "open",
+  randomQuestions: ["คำถาม 1", "คำถาม 2", ...],
+  // fixedQuestion/fixedAnswer ปล่อยไว้ก็ได้ ไม่ถูกใช้ตอน open
+};
 ```
 
-**Mode B: คำถามเดียวสำหรับทุกคน + คำตอบ fix**
+**Fixed mode — คำถามเดียว + คำตอบเป๊ะ** (quiz)
 ```js
-// reminder.js — เหลือคำถามเดียว
-const DAILY_QUESTIONS = ["น้ำเปล่าใส่ตู้เย็นแล้วจะเย็นหรือร้อน?"];
-// (comment array 51 ข้อด้านล่าง)
-
-// interactions.js — เพิ่ม CORRECT_ANSWER
-const CORRECT_ANSWER = "เย็น";
-
-// Modal input style → Short, ลบ minLength
-.setStyle(TextInputStyle.Short)
-.setMaxLength(50);
-
-// In handleModalSubmit — เพิ่ม strict check
-if (answer !== CORRECT_ANSWER) {
-  return interaction.reply({
-    content: "❌ ตอบไม่ถูก ไม่บันทึกข้อมูล — ลองอีกที (กด Done ใหม่)",
-    ephemeral: true,
-  });
-}
+const config = {
+  mode: "fixed",
+  fixedQuestion: "น้ำเปล่าใส่ตู้เย็นแล้วจะเย็นหรือร้อน?",
+  fixedAnswer: "เย็น",
+};
 ```
 
-**Mode C: คำถามเดียว + ตอบอะไรก็ได้**
-- เหมือน Mode B แต่ไม่เพิ่ม CORRECT_ANSWER + ไม่เพิ่ม strict check
+**คำถามเดียว + ตอบอะไรก็ได้** (เคยเรียก Mode C)
+```js
+const config = {
+  mode: "open",
+  randomQuestions: ["คำถามเดียวที่ต้องการ"],  // ใส่แค่ตัวเดียว
+};
+```
+
+Logic ใน [src/interactions.js](src/interactions.js) จะ auto-detect:
+- mode `fixed` → modal input style = Short, max 50 chars, validate exact match
+- mode `open` → modal style = Paragraph, min 3 chars, max 500, รับทุกคำตอบ
 
 ### ⏰ เปลี่ยนเวลา Broadcast / Summary
 
