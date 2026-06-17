@@ -2,6 +2,9 @@
 // ─────────────────────────────────────────────────────────────
 // แก้ค่าตรงนี้เพื่อปรับโหมดคำถาม โดยไม่ต้องแตะโค้ดอื่น
 //
+//   enabled: false → ปิดระบบคำถาม กด Done = check-in ทันที (ไม่มี modal)
+//   enabled: true  → เปิดระบบคำถาม กด Done → modal ขึ้นคำถาม
+//
 //   mode: "open"  → สุ่มคำถามจาก randomQuestions, ตอบอะไรก็ได้ (≥3 chars)
 //   mode: "fixed" → ใช้คำถามเดียว fixedQuestion, ต้องตอบเป๊ะ fixedAnswer
 //
@@ -10,7 +13,8 @@
 // ─────────────────────────────────────────────────────────────
 
 const config = {
-  mode: "fixed",
+  enabled: false,
+  mode: "open",
 
   // Used when mode === "fixed"
   fixedQuestion: "ครึ่งหนึ่งของ 100 บวก 10 เท่ากับเท่าไหร่",
@@ -72,6 +76,10 @@ const config = {
   ],
 };
 
+function isQuestionEnabled() {
+  return config.enabled === true;
+}
+
 function isFixedMode() {
   return config.mode === "fixed";
 }
@@ -85,6 +93,7 @@ function getCorrectAnswer() {
 }
 
 module.exports = {
+  isQuestionEnabled,
   isFixedMode,
   getQuestions,
   getCorrectAnswer,

@@ -22,6 +22,14 @@ Production รันบน Railway, auto-deploy เมื่อ push เข้�
 
 แก้ที่ [src/questions.config.js](src/questions.config.js) ที่เดียว — โค้ดอื่นไม่ต้องแตะ
 
+**ปิดระบบคำถาม — กด Done = check-in ทันที**
+```js
+const config = {
+  enabled: false,  // ← ปิด modal คำถาม
+  // ฟิลด์อื่นปล่อยไว้ก็ได้ ไม่ถูกใช้
+};
+```
+
 **Open mode — คำถามสุ่ม + ตอบอะไรก็ได้** (default)
 ```js
 const config = {

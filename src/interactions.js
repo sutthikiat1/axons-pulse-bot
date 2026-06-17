@@ -25,6 +25,7 @@ const {
 
 // Question/answer mode driven by src/questions.config.js
 const {
+  isQuestionEnabled,
   isFixedMode,
   getCorrectAnswer,
 } = require("./questions.config");
@@ -160,8 +161,12 @@ async function handleButton(interaction) {
     });
   }
 
-  // Done → open daily-question modal (recorded only after user submits valid answer)
+  // Done → if question feature is disabled, record immediately;
+  // otherwise open the daily-question modal
   if (interaction.customId === "pulse_done") {
+    if (!isQuestionEnabled()) {
+      return processCheckin(interaction, "done");
+    }
     const { index, text } = getRandomQuestion();
     const modal = new ModalBuilder()
       .setCustomId(`pulse_done_confirm_${index}`)
