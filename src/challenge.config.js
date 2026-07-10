@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────
 
 const config = {
-  enabled: false,
+  enabled: true,
 };
 
 function isChallengeEnabled() {
