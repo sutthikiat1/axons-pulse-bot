@@ -16,6 +16,9 @@ function getToday() {
 const { getQuestions } = require("./questions.config");
 const DAILY_QUESTIONS = getQuestions();
 
+// Challenge mode (สลับสี+ไอคอนปุ่ม) — toggle ที่ src/challenge.config.js
+const { isChallengeEnabled } = require("./challenge.config");
+
 function getRandomQuestion() {
   const index = Math.floor(Math.random() * DAILY_QUESTIONS.length);
   return { index, text: DAILY_QUESTIONS[index] };
@@ -208,26 +211,68 @@ function shuffleArray(arr) {
   return a;
 }
 
+// Function of each button — customId + word drive BEHAVIOR and never
+// change. Only the "skin" (emoji + color) varies by mode. The word
+// always tells the truth so a careful reader can still pick correctly.
+const BUTTON_DEFS = [
+  { customId: "pulse_done", word: "Done" },
+  { customId: "pulse_skip", word: "Skip (ลา/WFH)" },
+  { customId: "pulse_wait", word: "Wait" },
+];
+
+// Normal skins: emoji + color match the function (muscle-memory friendly)
+const NORMAL_SKINS = {
+  pulse_done: { emoji: "✅", style: ButtonStyle.Success }, // green
+  pulse_skip: { emoji: "⏭️", style: ButtonStyle.Secondary }, // grey
+  pulse_wait: { emoji: "⏳", style: ButtonStyle.Primary }, // blurple
+};
+
+// Challenge skins: a spicier palette (adds red) shuffled across the 3
+// buttons so emoji+color no longer match the function — a "disguise"
+// that defeats muscle memory. Toggle via src/challenge.config.js.
+const CHALLENGE_SKINS = [
+  { emoji: "⏳", style: ButtonStyle.Danger }, // red + hourglass
+  { emoji: "✅", style: ButtonStyle.Success }, // green + check
+  { emoji: "⏭️", style: ButtonStyle.Primary }, // blurple + skip
+];
+
+// Assign challenge skins as a DERANGEMENT: no button may show its true
+// look (same emoji AND color as NORMAL). Guarantees Done is never the
+// instinctive ✅-green check-in skin (green appears only once in the
+// palette). Rejection-sampling — a valid arrangement always exists and
+// ~2/3 of shuffles already qualify, so this converges immediately.
+function assignChallengeSkins() {
+  const looksTrue = (skin, customId) => {
+    const n = NORMAL_SKINS[customId];
+    return skin.emoji === n.emoji && skin.style === n.style;
+  };
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const pool = shuffleArray(CHALLENGE_SKINS);
+    if (BUTTON_DEFS.every((def, i) => !looksTrue(pool[i], def.customId))) {
+      return pool;
+    }
+  }
+  // Fallback (statistically never reached) — a hand-checked derangement
+  return [...CHALLENGE_SKINS]; // done→red, skip→green, wait→blurple
+}
+
 // Build Done + Skip + Wait buttons. All 3 are shuffled to random
 // positions every broadcast. Wait is a "fake" button that only shows
 // a reminder ephemeral message — does not record a check-in.
+// When challenge mode is on, emoji+color are also shuffled (disguised).
 function buildBroadcastButtons() {
-  const doneBtn = new ButtonBuilder()
-    .setCustomId("pulse_done")
-    .setLabel("✅ Done")
-    .setStyle(ButtonStyle.Success);
+  const challenge = isChallengeEnabled();
+  const skinPool = challenge ? assignChallengeSkins() : null;
 
-  const skipBtn = new ButtonBuilder()
-    .setCustomId("pulse_skip")
-    .setLabel("⏭️ Skip (ลา/WFH)")
-    .setStyle(ButtonStyle.Secondary);
+  const buttons = BUTTON_DEFS.map((def, i) => {
+    const skin = challenge ? skinPool[i] : NORMAL_SKINS[def.customId];
+    return new ButtonBuilder()
+      .setCustomId(def.customId)
+      .setLabel(`${skin.emoji} ${def.word}`)
+      .setStyle(skin.style);
+  });
 
-  const waitBtn = new ButtonBuilder()
-    .setCustomId("pulse_wait")
-    .setLabel("⏳ Wait")
-    .setStyle(ButtonStyle.Primary);
-
-  const shuffled = shuffleArray([doneBtn, skipBtn, waitBtn]);
+  const shuffled = shuffleArray(buttons);
   const row = new ActionRowBuilder().addComponents(...shuffled);
   return [row];
 }

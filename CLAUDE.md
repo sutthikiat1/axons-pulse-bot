@@ -11,6 +11,7 @@ Production รันบน Railway, auto-deploy เมื่อ push เข้�
 - [src/db.js](src/db.js) — sql.js layer: members, checkins, broadcast_messages, checkin_qa
 - [src/commands.js](src/commands.js) — Discord slash command definitions (`/pulse`, `/pulse-admin`)
 - [src/questions.config.js](src/questions.config.js) — **คำถาม + คำตอบ + โหมด (open/fixed)** — แก้ที่นี่ที่เดียวจบ
+- [src/challenge.config.js](src/challenge.config.js) — **challenge mode** เปิด/ปิด สลับสี+ไอคอนปุ่ม — แก้ที่นี่ที่เดียวจบ
 - [src/reminder.js](src/reminder.js) — embeds, buttons, scoring, question helpers (อ่าน pool จาก config)
 - [src/interactions.js](src/interactions.js) — button/modal/command handlers, **time gate**, validation logic (อ่าน mode/answer จาก config)
 
@@ -59,6 +60,28 @@ const config = {
 Logic ใน [src/interactions.js](src/interactions.js) จะ auto-detect:
 - mode `fixed` → modal input style = Short, max 50 chars, validate exact match
 - mode `open` → modal style = Paragraph, min 3 chars, max 500, รับทุกคำตอบ
+
+### 🎮 Challenge mode — สลับสี+ไอคอนปุ่ม (กิมมิคเพิ่มความยาก)
+
+แก้ที่ [src/challenge.config.js](src/challenge.config.js) ที่เดียว
+
+```js
+const config = {
+  enabled: false,  // false = ปุ่มปกติ (default), true = สลับสี+ไอคอน
+};
+```
+
+- **enabled: true** → ทุก broadcast จะ **สุ่มสลับ ไอคอน+สี** ของปุ่ม Done/Skip/Wait
+  (มีสีแดง Danger เพิ่มเข้ามาด้วย) — เช่น ปุ่ม Done กลายเป็นแดง+นาฬิกาทราย,
+  ปุ่ม Skip กลายเป็นเขียว+ติ๊กถูก เพื่อกันการกดตามความเคยชิน
+- **การันตี derangement:** ไม่มีปุ่มไหนได้หน้าตาจริงของตัวเอง → **ปุ่ม Done
+  ไม่มีทางเป็นเขียว+✅** (จะเหลือแค่ แดง⏳ หรือ ม่วง⏭️ เท่านั้น)
+- **คำบนปุ่ม (Done / Skip / Wait) ยังบอกฟังก์ชันจริงเสมอ** — สลับแค่ ไอคอน+สี
+  → ถ้าอ่านดีๆ ยังกดถูกได้ กัน check-in ผิดโดยไม่ตั้งใจ (เป็นข้อมูลจริง)
+- ปลอดภัยต่อ logic: behavior ผูกกับ `customId` ล้วนๆ — สี/ไอคอนเป็นแค่ภาพ
+
+Logic อยู่ที่ [src/reminder.js](src/reminder.js): `NORMAL_SKINS` (ปกติ) vs
+`assignChallengeSkins()` ที่สุ่มแบบ derange (no button = true look) ทุก broadcast
 
 ### ⏰ เปลี่ยนเวลา Broadcast / Summary
 
@@ -139,6 +162,9 @@ Logic ใน [src/interactions.js](src/interactions.js) จะ auto-detect:
 - ✅ **Done** (Success/green) — เปิด modal ถาม question → ตอบถูก/ผ่าน validation = record check-in
 - ⏭️ **Skip (ลา/WFH)** (Secondary/grey) — record skip ทันที ไม่ต้อง confirm
 - ⏳ **Wait** (Primary/blurple) — fake button, แค่ส่ง ephemeral "อย่าลืมบันทึกข้อมูลในระบบนะ" ไม่ record
+
+> สี/ไอคอนด้านบนเป็นค่าปกติ — ถ้าเปิด **challenge mode** ([src/challenge.config.js](src/challenge.config.js))
+> สี+ไอคอนจะถูกสุ่มสลับทุก broadcast (คำบนปุ่มยังเดิม) ดู recipe "🎮 Challenge mode"
 
 แก้ button logic ที่ `buildBroadcastButtons()` ใน [src/reminder.js](src/reminder.js)
 แก้ handler ที่ `handleButton()` ใน [src/interactions.js](src/interactions.js)
