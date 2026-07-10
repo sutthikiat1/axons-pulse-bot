@@ -227,33 +227,53 @@ const NORMAL_SKINS = {
   pulse_wait: { emoji: "⏳", style: ButtonStyle.Primary }, // blurple
 };
 
-// Challenge skins: a spicier palette (adds red) shuffled across the 3
-// buttons so emoji+color no longer match the function — a "disguise"
-// that defeats muscle memory. Toggle via src/challenge.config.js.
+// Challenge skins: a deliberately CONFUSING pool — icons whose meaning
+// clashes with the button color, spanning all 4 Discord button colors
+// (blurple/grey/green/red — Discord offers no other button colors).
+// Each skin has a unique emoji so no two buttons ever share an icon.
+// 3 are picked at random per broadcast, so the palette itself varies.
 const CHALLENGE_SKINS = [
-  { emoji: "⏳", style: ButtonStyle.Danger }, // red + hourglass
-  { emoji: "✅", style: ButtonStyle.Success }, // green + check
-  { emoji: "⏭️", style: ButtonStyle.Primary }, // blurple + skip
+  { emoji: "✅", style: ButtonStyle.Danger }, // check on RED
+  { emoji: "❌", style: ButtonStyle.Success }, // cross on GREEN
+  { emoji: "⏳", style: ButtonStyle.Success }, // hourglass on GREEN
+  { emoji: "⏭️", style: ButtonStyle.Danger }, // skip on RED
+  { emoji: "⚠️", style: ButtonStyle.Primary }, // warning on BLURPLE
+  { emoji: "❓", style: ButtonStyle.Secondary }, // question on GREY
+  { emoji: "🚫", style: ButtonStyle.Primary }, // no-entry on BLURPLE
+  { emoji: "💤", style: ButtonStyle.Secondary }, // zzz on GREY
 ];
 
-// Assign challenge skins as a DERANGEMENT: no button may show its true
-// look (same emoji AND color as NORMAL). Guarantees Done is never the
-// instinctive ✅-green check-in skin (green appears only once in the
-// palette). Rejection-sampling — a valid arrangement always exists and
-// ~2/3 of shuffles already qualify, so this converges immediately.
+// Done must never look "safe/correct" — no green color and no check icon,
+// so muscle memory ("green check = check in") can never land it right.
+function doneLooksSafe(skin) {
+  return skin.style === ButtonStyle.Success || skin.emoji === "✅";
+}
+
+// Pick 3 distinct skins, one per button, such that:
+//  - no button shows its true (normal) look — a real disguise
+//  - Done is never green and never a check (see doneLooksSafe)
+// Rejection-sampling over the pool; a valid arrangement always exists
+// (>60% of draws already qualify) so this converges immediately.
 function assignChallengeSkins() {
   const looksTrue = (skin, customId) => {
     const n = NORMAL_SKINS[customId];
     return skin.emoji === n.emoji && skin.style === n.style;
   };
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const pool = shuffleArray(CHALLENGE_SKINS);
-    if (BUTTON_DEFS.every((def, i) => !looksTrue(pool[i], def.customId))) {
-      return pool;
-    }
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const pick = shuffleArray(CHALLENGE_SKINS).slice(0, BUTTON_DEFS.length);
+    const ok = BUTTON_DEFS.every((def, i) => {
+      if (looksTrue(pick[i], def.customId)) return false;
+      if (def.customId === "pulse_done" && doneLooksSafe(pick[i])) return false;
+      return true;
+    });
+    if (ok) return pick;
   }
-  // Fallback (statistically never reached) — a hand-checked derangement
-  return [...CHALLENGE_SKINS]; // done→red, skip→green, wait→blurple
+  // Fallback (statistically never reached) — a hand-checked assignment
+  return [
+    { emoji: "🚫", style: ButtonStyle.Primary }, // done: blurple, not green/check
+    { emoji: "❌", style: ButtonStyle.Success }, // skip: green cross
+    { emoji: "⏭️", style: ButtonStyle.Danger }, // wait: red skip
+  ];
 }
 
 // Build Done + Skip + Wait buttons. All 3 are shuffled to random
