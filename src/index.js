@@ -74,11 +74,11 @@ function setupCronJobs() {
   const channelId = process.env.CHANNEL_ID;
   const tz = process.env.TZ || "Asia/Bangkok";
 
-  // 17:00 Mon-Fri — Broadcast reminder
+  // 16:50 Mon-Fri — Broadcast reminder
   cron.schedule(
-    "0 17 * * 1-5",
+    "50 16 * * 1-5",
     async () => {
-      console.log("[CRON] Running 17:00 broadcast...");
+      console.log("[CRON] Running 16:50 broadcast...");
       try {
         const channel = await client.channels.fetch(channelId);
         if (channel) await sendBroadcast(channel);
@@ -104,7 +104,7 @@ function setupCronJobs() {
     { timezone: tz }
   );
 
-  console.log(`[CRON] Scheduled: 17:00 broadcast, 19:01 summary (${tz})`);
+  console.log(`[CRON] Scheduled: 16:50 broadcast, 19:01 summary (${tz})`);
 }
 
 // ── Login ──

@@ -101,8 +101,8 @@ async function processCheckin(interaction, status, qa = null) {
   await refreshBroadcastEmbed(interaction.client);
 }
 
-// Active check-in window: 17:00 – 19:00 (inclusive of 19:00:00)
-const CHECKIN_WINDOW_START_MIN = 17 * 60; // 17:00
+// Active check-in window: 16:50 – 19:00 (inclusive of 19:00:00)
+const CHECKIN_WINDOW_START_MIN = 16 * 60 + 50; // 16:50
 const CHECKIN_WINDOW_END_MIN = 19 * 60; // 19:00
 
 function isWithinCheckinWindow() {
@@ -116,11 +116,11 @@ function isWithinCheckinWindow() {
 // ── Button handler ──
 
 async function handleButton(interaction) {
-  // Time gate — block clicks outside 17:00–19:00 window
+  // Time gate — block clicks outside 16:50–19:00 window
   if (!isWithinCheckinWindow()) {
     return interaction.reply({
       content:
-        "❌ ปุ่มใช้งานได้เฉพาะช่วง **17:00 – 19:00 น.** เท่านั้น (Asia/Bangkok)",
+        "❌ ปุ่มใช้งานได้เฉพาะช่วง **16:50 – 19:00 น.** เท่านั้น (Asia/Bangkok)",
       ephemeral: true,
     });
   }
@@ -133,7 +133,7 @@ async function handleButton(interaction) {
   // if (!msgData || interaction.message?.id !== msgData.messageId) {
   //   return interaction.reply({
   //     content:
-  //       "❌ ปุ่มนี้ไม่ใช่ broadcast ล่าสุดของวันนี้ — ต้องใช้ปุ่มจาก broadcast ล่าสุดเท่านั้น (รอ 17:00 หรือดูข้อความ broadcast ใหม่สุด)",
+  //       "❌ ปุ่มนี้ไม่ใช่ broadcast ล่าสุดของวันนี้ — ต้องใช้ปุ่มจาก broadcast ล่าสุดเท่านั้น (รอ 16:50 หรือดูข้อความ broadcast ใหม่สุด)",
   //     ephemeral: true,
   //   });
   // }
