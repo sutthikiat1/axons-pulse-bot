@@ -73,18 +73,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
 function setupCronJobs() {
   const channelId = process.env.CHANNEL_ID;
   const tz = process.env.TZ || "Asia/Bangkok";
+  const BROADCAST_JITTER_MIN = 30; // broadcast lands anywhere in 16:30-17:00
 
-  // 16:50 Mon-Fri — Broadcast reminder
+  // 16:30 Mon-Fri — Broadcast reminder at a random time within 16:30-17:00
+  // so people can't pre-position on the button before it appears.
   cron.schedule(
-    "50 16 * * 1-5",
-    async () => {
-      console.log("[CRON] Running 16:50 broadcast...");
-      try {
-        const channel = await client.channels.fetch(channelId);
-        if (channel) await sendBroadcast(channel);
-      } catch (err) {
-        console.error("[CRON] Broadcast failed:", err);
-      }
+    "30 16 * * 1-5",
+    () => {
+      const delayMin = Math.floor(Math.random() * (BROADCAST_JITTER_MIN + 1));
+      console.log(`[CRON] Broadcast scheduled in ${delayMin} min`);
+      setTimeout(async () => {
+        console.log("[CRON] Running broadcast...");
+        try {
+          const channel = await client.channels.fetch(channelId);
+          if (channel) await sendBroadcast(channel);
+        } catch (err) {
+          console.error("[CRON] Broadcast failed:", err);
+        }
+      }, delayMin * 60 * 1000);
     },
     { timezone: tz }
   );
@@ -104,7 +110,7 @@ function setupCronJobs() {
     { timezone: tz }
   );
 
-  console.log(`[CRON] Scheduled: 16:50 broadcast, 19:01 summary (${tz})`);
+  console.log(`[CRON] Scheduled: 16:30-17:00 random broadcast, 19:01 summary (${tz})`);
 }
 
 // ── Login ──

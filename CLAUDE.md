@@ -90,14 +90,14 @@ Logic อยู่ที่ [src/reminder.js](src/reminder.js): `NORMAL_SKINS` (
 
 1. **Cron** ใน [src/index.js](src/index.js):
    ```js
-   cron.schedule("50 16 * * 1-5", ...)  // broadcast: 16:50 Mon-Fri
+   cron.schedule("30 16 * * 1-5", ...)  // broadcast: 16:30 + random 0-30 min (BROADCAST_JITTER_MIN)
    cron.schedule("1 19 * * 1-5", ...)   // summary:  19:01 Mon-Fri
    ```
    Format: `"minute hour DOM month DOW"` — DOW 1-5 = Mon-Fri
 
 2. **Time gate window** ใน [src/interactions.js](src/interactions.js):
    ```js
-   const CHECKIN_WINDOW_START_MIN = 16 * 60 + 50;  // = broadcast time
+   const CHECKIN_WINDOW_START_MIN = 16 * 60 + 30;  // = earliest possible broadcast time
    const CHECKIN_WINDOW_END_MIN   = 19 * 60;  // = summary time - 1 min
    ```
    อย่าลืมแก้ข้อความ error ให้ตรงด้วย
